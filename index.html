@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3.3">
 
   <!-- PWA Configuration & Mobile Web App -->
   <link rel="manifest" href="manifest.json">
@@ -241,7 +241,7 @@
 
           <!-- App Footer Info -->
           <div class="settings-app-footer">
-            <div class="app-version-pill">SisaUang v3.2 PWA</div>
+            <div class="app-version-pill">SisaUang v3.3 PWA</div>
             <p>Aplikasi Keuangan Pribadi 100% Offline & Privat</p>
           </div>
 
@@ -638,103 +638,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 
   <!-- JavaScript Modules -->
-  <script src="js/config.js?v=3.2"></script>
-  <script src="js/currency.js?v=3.2"></script>
-  <script src="js/storage.js?v=3.2"></script>
-
-  <!-- Compatibility Adapter: Mendukung Format Categories Object & Array di storage.js maupun app.js -->
-  <script>
-    (function () {
-      // 1. Jika storage.js memanggil .find() atau .filter() pada object categories { expense: [], income: [] }
-      if (!Object.prototype.find) {
-        Object.defineProperty(Object.prototype, 'find', {
-          value: function (predicate, thisArg) {
-            if (this && (Array.isArray(this.expense) || Array.isArray(this.income))) {
-              const combined = [].concat(
-                Array.isArray(this.expense) ? this.expense.map(function (c) { return Object.assign({}, c, { type: 'expense' }); }) : [],
-                Array.isArray(this.income) ? this.income.map(function (c) { return Object.assign({}, c, { type: 'income' }); }) : []
-              );
-              return combined.find(predicate, thisArg);
-            }
-            return undefined;
-          },
-          enumerable: false,
-          configurable: true,
-          writable: true
-        });
-      }
-
-      if (!Object.prototype.filter) {
-        Object.defineProperty(Object.prototype, 'filter', {
-          value: function (predicate, thisArg) {
-            if (this && (Array.isArray(this.expense) || Array.isArray(this.income))) {
-              const combined = [].concat(
-                Array.isArray(this.expense) ? this.expense.map(function (c) { return Object.assign({}, c, { type: 'expense' }); }) : [],
-                Array.isArray(this.income) ? this.income.map(function (c) { return Object.assign({}, c, { type: 'income' }); }) : []
-              );
-              return combined.filter(predicate, thisArg);
-            }
-            return [];
-          },
-          enumerable: false,
-          configurable: true,
-          writable: true
-        });
-      }
-
-      // 2. Normalisasi state saat loadData & setelah import selesai
-      try {
-        if (window.SisaUang && window.SisaUang.Storage) {
-          const origLoad = window.SisaUang.Storage.loadData.bind(window.SisaUang.Storage);
-          const normalizeCategories = function (data) {
-            if (!data || typeof data !== 'object') return data;
-            if (!Array.isArray(data.categories)) {
-              const oldCats = data.categories || {};
-              const exp = Array.isArray(oldCats.expense)
-                ? oldCats.expense.map(function (c) { return Object.assign({}, c, { type: 'expense' }); })
-                : [];
-              const inc = Array.isArray(oldCats.income)
-                ? oldCats.income.map(function (c) { return Object.assign({}, c, { type: 'income' }); })
-                : [];
-              data.categories = exp.concat(inc);
-            }
-            if (!Array.isArray(data.accounts)) data.accounts = [];
-            if (!Array.isArray(data.transactions)) data.transactions = [];
-            return data;
-          };
-
-          window.SisaUang.Storage.loadData = function () {
-            const loaded = origLoad();
-            const normalized = normalizeCategories(loaded);
-            try { window.SisaUang.Storage.saveData(normalized); } catch (e) {}
-            return normalized;
-          };
-
-          if (typeof window.SisaUang.Storage.importBackupFile === 'function') {
-            const origImport = window.SisaUang.Storage.importBackupFile.bind(window.SisaUang.Storage);
-            window.SisaUang.Storage.importBackupFile = async function (file) {
-              const res = await origImport(file);
-              if (res && res.success && res.data) {
-                res.data = normalizeCategories(res.data);
-                window.SisaUang.Storage.saveData(res.data);
-              }
-              return res;
-            };
-          }
-        }
-      } catch (err) {
-        console.warn('SisaUang Compatibility Adapter warning:', err);
-      }
-    })();
-  </script>
-
-  <script src="js/app.js?v=3.2"></script>
+  <script src="js/config.js?v=3.3"></script>
+  <script src="js/currency.js?v=3.3"></script>
+  <script src="js/storage.js?v=3.3"></script>
+  <script src="js/app.js?v=3.3"></script>
 
   <!-- Registrasi & Pembaruan Otomatis Service Worker PWA -->
   <script>
     if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js?v=3.2')
+        navigator.serviceWorker.register('./sw.js?v=3.3')
           .then(function (registration) {
             registration.update();
             console.log('Service Worker SisaUang aktif:', registration.scope);
