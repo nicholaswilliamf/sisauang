@@ -3,7 +3,7 @@
  * Mengelola caching offline dengan strategi Cache-First dan fallback Network.
  */
 
-const CACHE_NAME = "sisauang-pwa-v1";
+const CACHE_NAME = "sisauang-pwa-v2";
 
 const ASSETS_TO_CACHE = [
   "./",

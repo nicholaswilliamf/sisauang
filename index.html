@@ -41,30 +41,37 @@
         <!-- Switcher Saldo: Utama vs Per Mata Uang -->
         <div class="segmented-toggle" title="Pilih cara melihat saldo">
           <button type="button" class="toggle-btn active" id="btn-mode-base">
-            <span>IDR Utama</span>
+            <span class="desktop-text">IDR Utama</span>
+            <span class="mobile-text">IDR</span>
           </button>
           <button type="button" class="toggle-btn" id="btn-mode-curr">
-            <span>Per Mata Uang</span>
+            <span class="desktop-text">Per Mata Uang</span>
+            <span class="mobile-text">Valas</span>
           </button>
         </div>
 
-        <!-- Tombol Modal Kurs & Valuta -->
-        <button type="button" class="btn btn-white btn-sm" id="btn-open-rates-modal" title="Pengaturan Kurs Manual">
+        <!-- Tombol Menu Mobile (Hanya tampil di HP) -->
+        <button type="button" class="btn btn-white btn-sm btn-mobile-menu" id="btn-mobile-menu" title="Menu & Pengaturan">
+          <span>⚙️</span> <span class="mobile-menu-text">Menu</span>
+        </button>
+
+        <!-- Tombol Modal Kurs & Valuta (Desktop) -->
+        <button type="button" class="btn btn-white btn-sm btn-desktop-only" id="btn-open-rates-modal" title="Pengaturan Kurs Manual">
           <span>💱</span> Kurs
         </button>
 
-        <!-- Tombol Modal Kelola Kategori -->
-        <button type="button" class="btn btn-white btn-sm" id="btn-open-categories-modal" title="Kelola Kategori Transaksi">
+        <!-- Tombol Modal Kelola Kategori (Desktop) -->
+        <button type="button" class="btn btn-white btn-sm btn-desktop-only" id="btn-open-categories-modal" title="Kelola Kategori Transaksi">
           <span>🏷️</span> Kategori
         </button>
 
-        <!-- Tombol Modal Backup/Restore JSON -->
-        <button type="button" class="btn btn-white btn-sm" id="btn-open-backup-modal" title="Cadangkan atau Pulihkan Data">
+        <!-- Tombol Modal Backup/Restore JSON (Desktop) -->
+        <button type="button" class="btn btn-white btn-sm btn-desktop-only" id="btn-open-backup-modal" title="Cadangkan atau Pulihkan Data">
           <span>💾</span> Backup
         </button>
 
-        <!-- Tombol Utama Catat Transaksi -->
-        <button type="button" class="btn btn-primary btn-sm" id="btn-open-tx-modal">
+        <!-- Tombol Utama Catat Transaksi (Desktop) -->
+        <button type="button" class="btn btn-primary btn-sm btn-desktop-only" id="btn-open-tx-modal">
           <span>➕</span> Catat Transaksi
         </button>
       </div>
@@ -553,6 +560,63 @@
       </div>
     </div>
   </div>
+
+  <!-- ==================== MODAL MENU MOBILE (BOTTOM SHEET) ==================== -->
+  <div class="modal-backdrop" id="modal-mobile-menu">
+    <div class="modal-panel modal-mobile-sheet">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-title-icon">⚙️</div>
+          <div>
+            <h3>Menu & Alat Tambahan</h3>
+            <p>Akses cepat alat & pengaturan SisaUang</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-mobile-menu">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1rem 1.25rem 1.25rem;">
+        <div class="mobile-menu-grid">
+          <button type="button" class="mobile-menu-item" id="mobile-menu-btn-rates">
+            <div class="mobile-menu-item-icon">💱</div>
+            <div class="mobile-menu-item-content">
+              <h4>Pengaturan Kurs Manual</h4>
+              <p>Kelola kurs mata uang asing terhadap IDR</p>
+            </div>
+            <span class="mobile-menu-arrow">›</span>
+          </button>
+
+          <button type="button" class="mobile-menu-item" id="mobile-menu-btn-categories">
+            <div class="mobile-menu-item-icon">🏷️</div>
+            <div class="mobile-menu-item-content">
+              <h4>Kelola Kategori Transaksi</h4>
+              <p>Tambah & atur kategori pengeluaran & pemasukan</p>
+            </div>
+            <span class="mobile-menu-arrow">›</span>
+          </button>
+
+          <button type="button" class="mobile-menu-item" id="mobile-menu-btn-backup">
+            <div class="mobile-menu-item-icon">💾</div>
+            <div class="mobile-menu-item-content">
+              <h4>Cadangkan & Pulihkan (Backup)</h4>
+              <p>Unduh data JSON, impor, atau reset aplikasi</p>
+            </div>
+            <span class="mobile-menu-arrow">›</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-bottom">
+        <button type="button" class="btn btn-white" id="btn-done-mobile-menu" style="width: 100%;">Tutup Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== FLOATING ACTION BUTTON (FAB) MOBILE ==================== -->
+  <button type="button" class="fab-btn" id="fab-open-tx-modal" title="Catat Transaksi Baru">
+    <span class="fab-icon">➕</span>
+    <span class="fab-text">Transaksi</span>
+  </button>
 
   <!-- JavaScript Modules -->
   <script src="js/config.js"></script>

@@ -143,7 +143,17 @@ document.addEventListener("DOMContentLoaded", () => {
     inputImportFile: document.getElementById("input-import-file"),
     btnImportJson: document.getElementById("btn-import-json"),
     importStatusMsg: document.getElementById("import-status-msg"),
-    btnResetData: document.getElementById("btn-reset-data")
+    btnResetData: document.getElementById("btn-reset-data"),
+
+    // Modal Menu Mobile (Bottom Sheet) & FAB
+    btnMobileMenu: document.getElementById("btn-mobile-menu"),
+    modalMobileMenu: document.getElementById("modal-mobile-menu"),
+    btnCloseMobileMenu: document.getElementById("btn-close-mobile-menu"),
+    btnDoneMobileMenu: document.getElementById("btn-done-mobile-menu"),
+    mobileMenuBtnRates: document.getElementById("mobile-menu-btn-rates"),
+    mobileMenuBtnCategories: document.getElementById("mobile-menu-btn-categories"),
+    mobileMenuBtnBackup: document.getElementById("mobile-menu-btn-backup"),
+    fabOpenTx: document.getElementById("fab-open-tx-modal")
   };
 
   // 3. Logika Perhitungan Keuangan Akun
@@ -1673,6 +1683,51 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Aplikasi berhasil direset ke pengaturan awal!");
     }
   });
+
+  // Modal Menu Mobile (Bottom Sheet) & FAB
+  function openMobileMenuModal() {
+    if (dom.modalMobileMenu) dom.modalMobileMenu.classList.add("open");
+  }
+
+  function closeMobileMenuModal() {
+    if (dom.modalMobileMenu) dom.modalMobileMenu.classList.remove("open");
+  }
+
+  if (dom.btnMobileMenu) {
+    dom.btnMobileMenu.addEventListener("click", openMobileMenuModal);
+  }
+  if (dom.btnCloseMobileMenu) {
+    dom.btnCloseMobileMenu.addEventListener("click", closeMobileMenuModal);
+  }
+  if (dom.btnDoneMobileMenu) {
+    dom.btnDoneMobileMenu.addEventListener("click", closeMobileMenuModal);
+  }
+
+  if (dom.mobileMenuBtnRates) {
+    dom.mobileMenuBtnRates.addEventListener("click", () => {
+      closeMobileMenuModal();
+      openRatesModal();
+    });
+  }
+
+  if (dom.mobileMenuBtnCategories) {
+    dom.mobileMenuBtnCategories.addEventListener("click", () => {
+      closeMobileMenuModal();
+      openCategoriesModal();
+    });
+  }
+
+  if (dom.mobileMenuBtnBackup) {
+    dom.mobileMenuBtnBackup.addEventListener("click", () => {
+      closeMobileMenuModal();
+      openBackupModal();
+    });
+  }
+
+  // Floating Action Button (FAB) Mobile
+  if (dom.fabOpenTx) {
+    dom.fabOpenTx.addEventListener("click", openTxModal);
+  }
 
   window.addEventListener("click", e => {
     if (e.target.classList.contains("modal-backdrop")) {
