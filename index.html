@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SisaUang - Pencatat Keuangan Akun & Kategori Multi-Mata Uang</title>
+  
+  <!-- Font Modern: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- PWA Configuration & Mobile Web App -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#059669">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SisaUang">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+</head>
+<body>
+
+  <!-- ==================== HEADER (MINIMALIS & STICKY NON-OVERLAPPING) ==================== -->
+  <header class="app-header">
+    <div class="container header-inner">
+      <!-- Logo & Nama -->
+      <a href="#" class="logo-group">
+        <div class="logo-badge">💰</div>
+        <div class="brand-text">
+          <h1>SisaUang <span class="badge-tagline">6 Kategori Akun</span></h1>
+          <p>Pelacak keuangan pribadi offline & privat</p>
+        </div>
+      </a>
+
+      <!-- Kontrol Kanan: Toggle Mode Saldo & Menu Aksi -->
+      <div class="header-right">
+        <!-- Switcher Saldo: Utama vs Per Mata Uang -->
+        <div class="segmented-toggle" title="Pilih cara melihat saldo">
+          <button type="button" class="toggle-btn active" id="btn-mode-base">
+            <span>IDR Utama</span>
+          </button>
+          <button type="button" class="toggle-btn" id="btn-mode-curr">
+            <span>Per Mata Uang</span>
+          </button>
+        </div>
+
+        <!-- Tombol Modal Kurs & Valuta -->
+        <button type="button" class="btn btn-white btn-sm" id="btn-open-rates-modal" title="Pengaturan Kurs Manual">
+          <span>💱</span> Kurs
+        </button>
+
+        <!-- Tombol Modal Kelola Kategori -->
+        <button type="button" class="btn btn-white btn-sm" id="btn-open-categories-modal" title="Kelola Kategori Transaksi">
+          <span>🏷️</span> Kategori
+        </button>
+
+        <!-- Tombol Modal Backup/Restore JSON -->
+        <button type="button" class="btn btn-white btn-sm" id="btn-open-backup-modal" title="Cadangkan atau Pulihkan Data">
+          <span>💾</span> Backup
+        </button>
+
+        <!-- Tombol Utama Catat Transaksi -->
+        <button type="button" class="btn btn-primary btn-sm" id="btn-open-tx-modal">
+          <span>➕</span> Catat Transaksi
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT (DENGAN PADDING AMAN) ==================== -->
+  <main class="main-content container">
+    <!-- ==================== HERO BENTO SECTION (2 KARTU UTAMA) ==================== -->
+    <section class="hero-bento">
+      <!-- Kartu 1: Sisa Uang Siap Pakai (Gradien Hijau Gelap Elegan) -->
+      <div class="card-hero-safe">
+        <div>
+          <div class="hero-tag">
+            <span>🛡️</span> Sisa Uang Siap Pakai
+          </div>
+          <div class="safe-amount-wrap">
+            <div class="safe-amount tabular-nums" id="dash-liquid-balance">Rp 0</div>
+          </div>
+          <p class="safe-desc">
+            Total dana likuid dari <strong>Cash, Bank, dan E-Wallet</strong> yang aman dibelanjakan tanpa menyentuh tabungan investasi.
+          </p>
+
+          <!-- Callout Total Kewajiban (Kartu Kredit & Pinjaman) -->
+          <div class="credit-debt-callout" id="box-credit-debt">
+            <span class="debt-label">
+              <span>💳</span> Total Kewajiban (CC & Pinjaman):
+            </span>
+            <span class="debt-value tabular-nums" id="dash-credit-debt">Rp 0</span>
+          </div>
+        </div>
+
+        <div class="safe-footer-meta">
+          <span id="liquid-accounts-summary">Akun Likuid: Cash, Bank, E-Wallet</span>
+          <span id="liquid-percent-badge" style="font-weight: 700; color: #a7f3d0;">100% Likuiditas</span>
+        </div>
+      </div>
+
+      <!-- Kartu 2: Net Worth (Kekayaan Bersih) & Arus Kas Bulan Ini -->
+      <div class="card-hero-total">
+        <div>
+          <div class="total-header-row">
+            <span class="total-label">Total Kekayaan Bersih (Net Worth)</span>
+            <span style="font-size: 0.8rem; font-weight: 600; color: var(--color-brand-600);" id="base-curr-indicator">Basis: IDR</span>
+          </div>
+          <div class="total-amount tabular-nums" id="dash-net-worth">Rp 0</div>
+          <div class="total-subtext" id="dash-net-worth-subtext">Total Aset (Likuid + Investasi) minus Kewajiban (CC & Pinjaman)</div>
+          
+          <!-- Rincian per mata uang saat mode 'Per Mata Uang' aktif -->
+          <div class="currency-breakdown-list" id="dash-currency-breakdown" style="display: none;"></div>
+        </div>
+
+        <!-- Cashflow Mini Cards Bulan Ini -->
+        <div class="cashflow-grid">
+          <div class="cashflow-item cashflow-in">
+            <div class="cashflow-title">
+              <span>↗️</span> Pemasukan Bulan Ini
+            </div>
+            <div class="cashflow-value tabular-nums" id="stat-month-income">+Rp 0</div>
+          </div>
+          <div class="cashflow-item cashflow-out">
+            <div class="cashflow-title">
+              <span>↘️</span> Pengeluaran Bulan Ini
+            </div>
+            <div class="cashflow-value tabular-nums" id="stat-month-expense">-Rp 0</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== BENTO GRID: 6 KELOMPOK AKUN KEUANGAN ==================== -->
+    <section>
+      <div class="section-title-wrap">
+        <div>
+          <h2 class="section-title">Akun & Dompet Keuangan</h2>
+          <p class="section-subtitle">Dikelompokkan rapi dalam 6 kategori: Cash, Bank, E-Wallet, Credit Card, Pinjaman, dan Investasi/Aset.</p>
+        </div>
+        <button type="button" class="btn btn-white btn-sm" id="btn-quick-add-account">
+          <span>➕</span> Tambah Akun
+        </button>
+      </div>
+
+      <!-- Container untuk 6 Kelompok Akun (Grouped Accordion) -->
+      <div class="account-groups-container" id="accounts-list-container">
+        <!-- Kartu grup akun dan item-itemnya dirender secara dinamis oleh JS -->
+      </div>
+    </section>
+
+    <!-- ==================== BREAKDOWN PENGELUARAN PER KATEGORI ==================== -->
+    <section class="category-breakdown-section">
+      <div class="cat-breakdown-header">
+        <div>
+          <h3 class="cat-breakdown-title">Alokasi Pengeluaran per Kategori</h3>
+          <p style="font-size: 0.8rem; color: var(--color-slate-500); margin-top: 0.15rem;">
+            Pantau porsi belanja Kebutuhan Harian, Tagihan & Cicilan, dan kategori lainnya.
+          </p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-manage-cat-link">
+          <span>⚙️</span> Kelola Kategori
+        </button>
+      </div>
+
+      <!-- Multi-Color Stacked Bar -->
+      <div class="cat-stacked-bar" id="cat-stacked-bar"></div>
+
+      <!-- Grid Pills Kategori -->
+      <div class="cat-pills-grid" id="cat-pills-grid"></div>
+    </section>
+
+    <!-- ==================== RIWAYAT TRANSAKSI MODERN ==================== -->
+    <section class="tx-container-card">
+      <div class="tx-header-wrap">
+        <div>
+          <h2 class="section-title" style="font-size: 1.15rem;">Riwayat Transaksi</h2>
+          <p class="section-subtitle" style="margin-top: 0;">Mutasi pengeluaran, pemasukan, dan transfer antar akun.</p>
+        </div>
+
+        <!-- Filter Tipe Transaksi (Pill Switcher) -->
+        <div class="tx-filter-pills">
+          <button type="button" class="tx-filter-btn active" data-filter="all">Semua</button>
+          <button type="button" class="tx-filter-btn" data-filter="expense">💸 Pengeluaran</button>
+          <button type="button" class="tx-filter-btn" data-filter="income">💰 Pemasukan</button>
+          <button type="button" class="tx-filter-btn" data-filter="transfer">🔄 Transfer</button>
+        </div>
+      </div>
+
+      <!-- Feed Transaksi Bergaya Modern (Bukan Tabel Kaku!) -->
+      <div class="tx-list" id="tx-feed-container">
+        <!-- Item transaksi akan dirender secara dinamis oleh JS -->
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== MODAL 1: CATAT TRANSAKSI ==================== -->
+  <div class="modal-backdrop" id="modal-transaction">
+    <div class="modal-panel">
+      <div class="modal-top">
+        <h3 class="modal-title">Catat Transaksi Baru</h3>
+        <button class="btn-close-modal" id="btn-close-tx-modal">&times;</button>
+      </div>
+
+      <form id="form-transaction">
+        <div class="modal-content">
+          <!-- 3 Segmented Tab Tipe Transaksi -->
+          <div class="tx-modal-tabs">
+            <button type="button" class="tx-modal-tab-btn active" data-type="expense">💸 Pengeluaran</button>
+            <button type="button" class="tx-modal-tab-btn" data-type="income">💰 Pemasukan</button>
+            <button type="button" class="tx-modal-tab-btn" data-type="transfer">🔄 Transfer Antar Akun</button>
+          </div>
+
+          <!-- Nominal & Mata Uang Transaksi -->
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label class="form-label" for="tx-amount">Nominal</label>
+              <input type="number" id="tx-amount" class="form-control tabular-nums" step="any" min="0" placeholder="0" required>
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="tx-currency">Mata Uang Transaksi</label>
+              <select id="tx-currency" class="form-control" required></select>
+            </div>
+          </div>
+
+          <!-- Akun Sumber (Untuk Pengeluaran & Transfer) / Akun Tujuan (Untuk Pemasukan) -->
+          <div class="form-field" id="group-tx-account">
+            <label class="form-label" for="tx-account" id="label-tx-account">Sumber Akun</label>
+            <select id="tx-account" class="form-control" required></select>
+          </div>
+
+          <!-- Akun Tujuan (Khusus Transfer) -->
+          <div class="form-field" id="group-tx-account-to" style="display: none;">
+            <label class="form-label" for="tx-account-to">Transfer ke Akun Tujuan</label>
+            <select id="tx-account-to" class="form-control"></select>
+          </div>
+
+          <!-- Pemberitahuan Pembayaran Kartu Kredit -->
+          <div id="tx-credit-payment-notice" class="credit-payment-notice" style="display: none;">
+            <span>💳</span> <span><strong>Pembayaran Tagihan Kartu Kredit:</strong> Transfer ini otomatis mengurangi tagihan kartu kredit Anda dan mengembalikan sisa limit kredit.</span>
+          </div>
+
+          <!-- Pemberitahuan Pembayaran Pinjaman -->
+          <div id="tx-loan-payment-notice" class="credit-payment-notice" style="display: none; background-color: #fffbeb; border-color: #fef3c7; color: #b45309;">
+            <span>🤝</span> <span><strong>Pembayaran Pokok Pinjaman:</strong> Transfer ini otomatis mencatat pembayaran angsuran dan mengurangi sisa pokok pinjaman Anda.</span>
+          </div>
+
+          <!-- Pilihan Kategori (Khusus Pengeluaran & Pemasukan) -->
+          <div class="form-field" id="group-tx-category">
+            <label class="form-label" for="tx-category" id="label-tx-category">Kategori Transaksi</label>
+            <select id="tx-category" class="form-control"></select>
+          </div>
+
+          <!-- Live Conversion Preview Box -->
+          <div id="tx-conversion-preview" class="live-convert-alert" style="display: none;">
+            <span>💡</span> <span id="tx-conversion-text">Konversi otomatis berdasarkan kurs manual</span>
+          </div>
+
+          <!-- Tanggal & Catatan Keterangan -->
+          <div class="form-grid-2" style="margin-top: 1rem;">
+            <div class="form-field">
+              <label class="form-label" for="tx-date">Tanggal</label>
+              <input type="date" id="tx-date" class="form-control" required>
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="tx-note">Keterangan / Catatan</label>
+              <input type="text" id="tx-note" class="form-control" placeholder="Contoh: Belanja mingguan, Makan siang">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-bottom">
+          <button type="button" class="btn btn-white" id="btn-cancel-tx">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Transaksi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 2: TAMBAH / EDIT AKUN ==================== -->
+  <div class="modal-backdrop" id="modal-account">
+    <div class="modal-panel">
+      <div class="modal-top">
+        <h3 class="modal-title" id="modal-account-title">Tambah Akun Keuangan</h3>
+        <button class="btn-close-modal" id="btn-close-account-modal">&times;</button>
+      </div>
+
+      <form id="form-account">
+        <input type="hidden" id="account-edit-id" value="">
+        <div class="modal-content">
+          <!-- Tipe Akun (Tepat 6 Kategori) -->
+          <div class="form-field">
+            <label class="form-label" for="account-type">Kelompok / Tipe Akun</label>
+            <select id="account-type" class="form-control" required>
+              <option value="cash">💵 Cash (Aset Likuid - Dompet Fisik / Petty Cash)</option>
+              <option value="bank">🏦 Bank (Aset Likuid - Rekening Tabungan / Giro)</option>
+              <option value="ewallet">📱 E-Wallet (Aset Likuid - GoPay, OVO, Dana, ShopeePay)</option>
+              <option value="credit">💳 Credit Card (Liabilitas - Kartu Kredit / PayLater)</option>
+              <option value="loan">🤝 Pinjaman (Liabilitas - KTA, Cicilan, Utang Pokok)</option>
+              <option value="investment">📈 Investasi/Aset (Aset Non-Likuid - Reksadana, Saham, Emas)</option>
+            </select>
+            <p class="form-hint" id="account-type-hint">
+              Akun Cash, Bank, dan E-Wallet otomatis dihitung sebagai <strong>Sisa Uang Siap Pakai</strong>.
+            </p>
+          </div>
+
+          <!-- Nama Akun -->
+          <div class="form-field">
+            <label class="form-label" for="account-name">Nama Akun / Dompet</label>
+            <input type="text" id="account-name" class="form-control" placeholder="Contoh: BCA Payroll, Dompet Saku, Kartu Kredit BCA" required>
+          </div>
+
+          <!-- Ikon & Warna -->
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label class="form-label" for="account-icon">Ikon Emoji</label>
+              <input type="text" id="account-icon" class="form-control" placeholder="🏦, 💵, 📱, 💳, 🤝" maxlength="4" value="🏦" required>
+            </div>
+            <div class="form-field">
+              <label class="form-label" for="account-color">Warna Label</label>
+              <input type="color" id="account-color" class="form-control" value="#059669" style="height: 42px; padding: 2px;">
+            </div>
+          </div>
+
+          <!-- Mata Uang & Saldo / Limit -->
+          <div class="form-grid-2">
+            <div class="form-field">
+              <label class="form-label" for="account-currency">Mata Uang Akun</label>
+              <select id="account-currency" class="form-control" required></select>
+            </div>
+
+            <!-- Field Saldo Awal (Untuk Cash, Bank, E-Wallet, Investasi) -->
+            <div class="form-field" id="field-initial-balance">
+              <label class="form-label" for="account-initial-balance">Saldo Awal</label>
+              <input type="number" id="account-initial-balance" class="form-control tabular-nums" step="any" placeholder="0" value="0">
+            </div>
+
+            <!-- Field Limit Kredit (Khusus Kartu Kredit) -->
+            <div class="form-field" id="field-credit-limit" style="display: none;">
+              <label class="form-label" for="account-credit-limit">Limit Kredit</label>
+              <input type="number" id="account-credit-limit" class="form-control tabular-nums" step="any" min="0" placeholder="Contoh: 15000000">
+            </div>
+
+            <!-- Field Pokok Pinjaman Awal (Khusus Pinjaman) -->
+            <div class="form-field" id="field-loan-initial" style="display: none;">
+              <label class="form-label" for="account-initial-loan">Pokok Pinjaman Awal</label>
+              <input type="number" id="account-initial-loan" class="form-control tabular-nums" step="any" min="0" placeholder="Contoh: 5000000" value="0">
+            </div>
+          </div>
+
+          <!-- Field Tagihan Berjalan Saat Ini (Khusus Kartu Kredit) -->
+          <div class="form-field" id="field-credit-initial-debt" style="display: none;">
+            <label class="form-label" for="account-initial-debt">Tagihan Berjalan Saat Ini (Opsional)</label>
+            <input type="number" id="account-initial-debt" class="form-control tabular-nums" step="any" min="0" placeholder="0" value="0">
+            <p class="form-hint">Jumlah tagihan belum dibayar sebelum aplikasi ini digunakan.</p>
+          </div>
+
+          <!-- Field Khusus Credit Card: Tanggal Cetak Tagihan & Jatuh Tempo -->
+          <div class="form-grid-2" id="field-credit-dates" style="display: none; background: #fff1f2; padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid #fecdd3; margin-top: 0.5rem;">
+            <div class="form-field" style="margin-bottom: 0;">
+              <label class="form-label" for="account-statement-day" style="color: #9f1239; font-weight: 700;">
+                📅 Tanggal Cetak Tagihan (1–31)
+              </label>
+              <input type="number" id="account-statement-day" class="form-control tabular-nums" min="1" max="31" placeholder="Misal: 15" value="15">
+              <p class="form-hint" style="color: #be123c;">Statement Date bulanan.</p>
+            </div>
+            <div class="form-field" style="margin-bottom: 0;">
+              <label class="form-label" for="account-due-day" style="color: #9f1239; font-weight: 700;">
+                ⏰ Tanggal Jatuh Tempo (1–31)
+              </label>
+              <input type="number" id="account-due-day" class="form-control tabular-nums" min="1" max="31" placeholder="Misal: 5" value="5">
+              <p class="form-hint" style="color: #be123c;">Due Date pembayaran tagihan.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-bottom">
+          <button type="button" class="btn btn-white" id="btn-cancel-account">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Akun</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 3: KELOLA KATEGORI ==================== -->
+  <div class="modal-backdrop" id="modal-categories">
+    <div class="modal-panel" style="max-width: 580px;">
+      <div class="modal-top">
+        <div>
+          <h3 class="modal-title">Kelola Kategori Transaksi</h3>
+          <p style="font-size: 0.8rem; color: var(--color-slate-500);">Atur pos pengeluaran dan pemasukan Anda.</p>
+        </div>
+        <button class="btn-close-modal" id="btn-close-categories-modal">&times;</button>
+      </div>
+
+      <div class="modal-content">
+        <!-- Form Tambah Kategori -->
+        <div style="background-color: var(--color-slate-50); border: 1px solid var(--color-slate-200); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem;">
+          <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.75rem;">+ Tambah Kategori Baru</h4>
+          <form id="form-add-category">
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label class="form-label" for="new-cat-type">Tipe Kategori</label>
+                <select id="new-cat-type" class="form-control" required>
+                  <option value="expense">💸 Kategori Pengeluaran</option>
+                  <option value="income">💰 Kategori Pemasukan</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="new-cat-icon">Emoji Ikon</label>
+                <input type="text" id="new-cat-icon" class="form-control" placeholder="🛍️, ☕, 🎮" maxlength="4" value="🏷️" required>
+              </div>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label class="form-label" for="new-cat-name">Nama Kategori</label>
+                <input type="text" id="new-cat-name" class="form-control" placeholder="Contoh: Kopi & Nongkrong, Langganan" required>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="new-cat-color">Warna Label</label>
+                <input type="color" id="new-cat-color" class="form-control" value="#10b981" style="height: 42px; padding: 2px;">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; margin-top: 0.25rem;">Simpan Kategori</button>
+          </form>
+        </div>
+
+        <!-- Daftar Kategori Pengeluaran -->
+        <div style="margin-bottom: 1.25rem;">
+          <h4 style="font-size: 0.875rem; font-weight: 700; color: var(--color-expense-text); margin-bottom: 0.5rem;">Kategori Pengeluaran</h4>
+          <div id="list-categories-expense" style="display: flex; flex-wrap: wrap; gap: 0.4rem;"></div>
+        </div>
+
+        <!-- Daftar Kategori Pemasukan -->
+        <div>
+          <h4 style="font-size: 0.875rem; font-weight: 700; color: var(--color-income-text); margin-bottom: 0.5rem;">Kategori Pemasukan</h4>
+          <div id="list-categories-income" style="display: flex; flex-wrap: wrap; gap: 0.4rem;"></div>
+        </div>
+      </div>
+
+      <div class="modal-bottom">
+        <button type="button" class="btn btn-primary" id="btn-done-categories" style="width: 100%;">Selesai</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 4: PENGATURAN KURS MANUAL ==================== -->
+  <div class="modal-backdrop" id="modal-rates">
+    <div class="modal-panel" style="max-width: 580px;">
+      <div class="modal-top">
+        <div>
+          <h3 class="modal-title">Pengaturan Kurs & Mata Uang</h3>
+          <p style="font-size: 0.8rem; color: var(--color-slate-500);">Atur nilai tukar manual terhadap mata uang utama (<span id="rates-modal-base-code">IDR</span>).</p>
+        </div>
+        <button class="btn-close-modal" id="btn-close-rates-modal">&times;</button>
+      </div>
+
+      <div class="modal-content">
+        <!-- List Kurs Manual -->
+        <div class="rates-list" id="rates-modal-list">
+          <!-- Item kurs dirender secara dinamis oleh JS -->
+        </div>
+
+        <!-- Form Tambah Mata Uang Baru -->
+        <div style="margin-top: 1.5rem; background-color: var(--color-slate-50); border: 1px solid var(--color-slate-200); border-radius: var(--radius-lg); padding: 1.25rem;">
+          <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.75rem;">+ Tambah Mata Uang Baru</h4>
+          <form id="form-add-currency">
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label class="form-label" for="new-curr-code">Kode Valuta (ISO)</label>
+                <input type="text" id="new-curr-code" class="form-control" placeholder="Contoh: JPY, MYR, AUD" maxlength="5" required>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="new-curr-symbol">Simbol</label>
+                <input type="text" id="new-curr-symbol" class="form-control" placeholder="Contoh: ¥, RM, A$" maxlength="5" required>
+              </div>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label class="form-label" for="new-curr-name">Nama Mata Uang</label>
+                <input type="text" id="new-curr-name" class="form-control" placeholder="Contoh: Yen Jepang" required>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="new-curr-rate">Kurs terhadap IDR</label>
+                <input type="number" id="new-curr-rate" class="form-control tabular-nums" step="any" min="0" placeholder="Contoh: 110" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; margin-top: 0.25rem;">Tambah Mata Uang</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="modal-bottom">
+        <button type="button" class="btn btn-primary" id="btn-done-rates" style="width: 100%;">Selesai & Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 5: CADANGAN & PEMULIHAN (BACKUP/RESTORE) ==================== -->
+  <div class="modal-backdrop" id="modal-backup">
+    <div class="modal-panel" style="max-width: 520px;">
+      <div class="modal-top">
+        <div>
+          <h3 class="modal-title">Cadangan & Pemulihan Data</h3>
+          <p style="font-size: 0.8rem; color: var(--color-slate-500);">Simpan atau pulihkan data akun, kategori, dan transaksi Anda secara lokal.</p>
+        </div>
+        <button class="btn-close-modal" id="btn-close-backup-modal">&times;</button>
+      </div>
+
+      <div class="modal-content" style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <!-- Card Export -->
+        <div style="background-color: var(--color-slate-50); border: 1px solid var(--color-slate-200); border-radius: var(--radius-lg); padding: 1.25rem;">
+          <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.4rem;">
+            <span>📥</span> Ekspor Cadangan (JSON)
+          </h4>
+          <p style="font-size: 0.8rem; color: var(--color-slate-500); margin-bottom: 1rem;">
+            Unduh seluruh data akun, kurs, dan riwayat transaksi ke file JSON di komputer Anda.
+          </p>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-export-json" style="width: 100%;">
+            Unduh Cadangan JSON
+          </button>
+        </div>
+
+        <!-- Card Import -->
+        <div style="background-color: var(--color-slate-50); border: 1px solid var(--color-slate-200); border-radius: var(--radius-lg); padding: 1.25rem;">
+          <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.4rem;">
+            <span>📤</span> Impor & Pulihkan Data
+          </h4>
+          <p style="font-size: 0.8rem; color: var(--color-slate-500); margin-bottom: 0.75rem;">
+            Pilih file cadangan JSON dari perangkat Anda untuk memulihkan data.
+          </p>
+          <input type="file" id="input-import-file" accept=".json" class="form-control" style="padding: 0.5rem; margin-bottom: 0.75rem;">
+          <button type="button" class="btn btn-white btn-sm" id="btn-import-json" style="width: 100%;">
+            Pulihkan dari File
+          </button>
+          <div id="import-status-msg" style="font-size: 0.8rem; margin-top: 0.5rem; text-align: center; font-weight: 600;"></div>
+        </div>
+
+        <!-- Tombol Reset Data Pabrik -->
+        <div style="border-top: 1px dashed var(--color-slate-200); padding-top: 1rem;">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-reset-data" style="color: var(--color-expense-text); width: 100%;">
+            ⚠️ Reset Semua Data ke Pengaturan Awal
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-bottom">
+        <button type="button" class="btn btn-white" id="btn-done-backup" style="width: 100%;">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="js/config.js"></script>
+  <script src="js/currency.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- Registrasi Service Worker PWA (Hanya aktif di protokol HTTP/HTTPS) -->
+  <script>
+    if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(registration => {
+            console.log('Service Worker SisaUang berhasil didaftarkan dengan cakupan:', registration.scope);
+          })
+          .catch(error => {
+            console.warn('Pendaftaran Service Worker gagal:', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
