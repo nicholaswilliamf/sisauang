@@ -1,14 +1,12 @@
 /**
- * app.js
- * Logika utama aplikasi SisaUang (6 Kelompok Akun & Kategori Transaksi):
- * - State Management & LocalStorage
- * - 6 Kategori Akun: Cash, Bank, E-Wallet, Credit Card, Pinjaman, Investasi/Aset
- * - Perhitungan Siklus Penagihan (Billing Cycle) & Jatuh Tempo Credit Card
- * - Perhitungan Pokok Pinjaman (Loan Repayment)
- * - Perhitungan Sisa Uang Siap Pakai, Total Kewajiban, dan Net Worth
- * - Grouped Container UI dengan Accordion & Subtotal Kategori
- * - Dropdown Transaksi Terkelompok (<optgroup>) & Konversi Kurs Otomatis
- * - Backup / Restore JSON
+ * app.js - SisaUang (Money Manager Realbyte Style)
+ * Logika utama aplikasi keuangan mobile modern:
+ * - 4 Bottom Navigation Tabs: Transaksi, Statistik, Aset, Lainnya
+ * - Transaksi: Pemilih Bulan, Ringkasan 3 Kolom, Grup Tanggal Flat List
+ * - Statistik: Donut Chart Canvas, Switcher Pengeluaran/Pendapatan, Peringkat Kategori
+ * - Aset: Ringkasan 3 Kolom (Aset, Liabilitas, Net Worth), 6 Kelompok Akun Flat List
+ * - Lainnya: Menu Pengaturan, Mode Saldo, Kurs, Backup/Restore JSON & SQLite (.bin)
+ * - 100% Offline dengan LocalStorage & Multi-Mata Uang
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -19,49 +17,98 @@ document.addEventListener("DOMContentLoaded", () => {
   const Storage = window.SisaUang.Storage;
   const Config = window.SisaUang.Config;
 
-  // Filter aktif riwayat transaksi: 'all' | 'expense' | 'income' | 'transfer'
-  let activeTxFilter = "all";
+  // Navigasi Tab Aktif: 'transaksi' | 'statistik' | 'aset' | 'lainnya'
+  let currentTab = "transaksi";
 
-  // Tipe transaksi di modal: 'expense' | 'income' | 'transfer'
+  // Tanggal Bulan yang Sedang Dipilih (Default: Hari ini)
+  let currentMonthDate = new Date();
+
+  // Mode Statistik: 'expense' | 'income'
+  let currentStatType = "expense";
+
+  // Kata Kunci Pencarian Transaksi
+  let searchQuery = "";
+  let isSearchOpen = false;
+
+  // Tipe Transaksi di Modal: 'expense' | 'income' | 'transfer'
   let activeTxModalType = "expense";
 
-  // Status accordion per kelompok akun (disimpan di memory)
-  const collapsedGroups = {};
+  // Helper XSS Escaping
+  function escapeHTML(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
 
   // 2. Elemen DOM
   const dom = {
-    // Hero Section Saldo
-    liquidBalance: document.getElementById("dash-liquid-balance"),
-    creditDebt: document.getElementById("dash-credit-debt"),
-    liquidAccountsSummary: document.getElementById("liquid-accounts-summary"),
-    liquidPercentBadge: document.getElementById("liquid-percent-badge"),
-    netWorth: document.getElementById("dash-net-worth"),
-    netWorthSubtext: document.getElementById("dash-net-worth-subtext"),
-    breakdownDiv: document.getElementById("dash-currency-breakdown"),
-    baseCurrIndicator: document.getElementById("base-curr-indicator"),
+    // Bottom Tab Bar
+    tabBtnTransaksi: document.getElementById("tab-btn-transaksi"),
+    tabBtnStatistik: document.getElementById("tab-btn-statistik"),
+    tabBtnAset: document.getElementById("tab-btn-aset"),
+    tabBtnLainnya: document.getElementById("tab-btn-lainnya"),
 
-    // Cashflow Bulan Berjalan
-    statMonthIncome: document.getElementById("stat-month-income"),
-    statMonthExpense: document.getElementById("stat-month-expense"),
+    // Header Panels
+    headerPanelTransaksi: document.getElementById("header-panel-transaksi"),
+    headerPanelStatistik: document.getElementById("header-panel-statistik"),
+    headerPanelAset: document.getElementById("header-panel-aset"),
+    headerPanelLainnya: document.getElementById("header-panel-lainnya"),
 
-    // View Switcher Saldo
+    // Content Pages
+    pageTransaksi: document.getElementById("page-transaksi"),
+    pageStatistik: document.getElementById("page-statistik"),
+    pageAset: document.getElementById("page-aset"),
+    pageLainnya: document.getElementById("page-lainnya"),
+
+    // Header Transaksi & Pencarian
+    btnPrevMonth: document.getElementById("btn-prev-month"),
+    btnNextMonth: document.getElementById("btn-next-month"),
+    displayCurrentMonth: document.getElementById("display-current-month"),
+    btnToggleSearch: document.getElementById("btn-toggle-search"),
+    searchBarWrap: document.getElementById("search-bar-wrap"),
+    inputTxSearch: document.getElementById("input-tx-search"),
+    btnClearSearch: document.getElementById("btn-clear-search"),
+
+    // Bar Ringkasan 3 Kolom Transaksi
+    transSumIncome: document.getElementById("trans-sum-income"),
+    transSumExpense: document.getElementById("trans-sum-expense"),
+    transSumNet: document.getElementById("trans-sum-net"),
+    transDateGroupsContainer: document.getElementById("trans-date-groups-container"),
+
+    // Header & Konten Statistik
+    btnPrevMonthStat: document.getElementById("btn-prev-month-stat"),
+    btnNextMonthStat: document.getElementById("btn-next-month-stat"),
+    displayStatMonth: document.getElementById("display-stat-month"),
+    btnStatExpense: document.getElementById("btn-stat-expense"),
+    btnStatIncome: document.getElementById("btn-stat-income"),
+    statDonutCanvas: document.getElementById("stat-donut-canvas"),
+    donutCenterLabel: document.getElementById("donut-center-label"),
+    donutCenterVal: document.getElementById("donut-center-val"),
+    statRankingList: document.getElementById("stat-ranking-list"),
+
+    // Header & Konten Aset
+    btnOpenAccountTab3: document.getElementById("btn-open-account-tab3"),
+    assetSumAssets: document.getElementById("asset-sum-assets"),
+    assetSumLiabilities: document.getElementById("asset-sum-liabilities"),
+    assetSumNetworth: document.getElementById("asset-sum-networth"),
+    assetFlatGroupsList: document.getElementById("asset-flat-groups-list"),
+
+    // Menu Lainnya
+    menuBtnAddAccount: document.getElementById("menu-btn-add-account"),
+    menuBtnCategories: document.getElementById("menu-btn-categories"),
     btnModeBase: document.getElementById("btn-mode-base"),
     btnModeCurr: document.getElementById("btn-mode-curr"),
+    menuBtnRates: document.getElementById("menu-btn-rates"),
+    menuBtnBackupExport: document.getElementById("menu-btn-backup-export"),
+    menuBtnBackupImport: document.getElementById("menu-btn-backup-import"),
+    menuBtnResetData: document.getElementById("menu-btn-reset-data"),
 
-    // Containers & Sections
-    accountsContainer: document.getElementById("accounts-list-container"),
-    catStackedBar: document.getElementById("cat-stacked-bar"),
-    catPillsGrid: document.getElementById("cat-pills-grid"),
-    txFeedContainer: document.getElementById("tx-feed-container"),
-    txFilterButtons: document.querySelectorAll(".tx-filter-btn"),
-
-    // Tombol Buka Modal
-    btnOpenTx: document.getElementById("btn-open-tx-modal"),
-    btnOpenRates: document.getElementById("btn-open-rates-modal"),
-    btnOpenCategories: document.getElementById("btn-open-categories-modal"),
-    btnManageCatLink: document.getElementById("btn-manage-cat-link"),
-    btnOpenBackup: document.getElementById("btn-open-backup-modal"),
-    btnQuickAddAccount: document.getElementById("btn-quick-add-account"),
+    // Floating Action Button
+    fabAddTx: document.getElementById("fab-add-tx"),
 
     // Modal Transaksi
     modalTx: document.getElementById("modal-transaction"),
@@ -140,23 +187,28 @@ document.addEventListener("DOMContentLoaded", () => {
     btnCloseBackup: document.getElementById("btn-close-backup-modal"),
     btnDoneBackup: document.getElementById("btn-done-backup"),
     btnExportJson: document.getElementById("btn-export-json"),
+    btnExportBin: document.getElementById("btn-export-bin"),
     inputImportFile: document.getElementById("input-import-file"),
     btnImportJson: document.getElementById("btn-import-json"),
     importStatusMsg: document.getElementById("import-status-msg"),
-    btnResetData: document.getElementById("btn-reset-data"),
-
-    // Modal Menu Mobile (Bottom Sheet) & FAB
-    btnMobileMenu: document.getElementById("btn-mobile-menu"),
-    modalMobileMenu: document.getElementById("modal-mobile-menu"),
-    btnCloseMobileMenu: document.getElementById("btn-close-mobile-menu"),
-    btnDoneMobileMenu: document.getElementById("btn-done-mobile-menu"),
-    mobileMenuBtnRates: document.getElementById("mobile-menu-btn-rates"),
-    mobileMenuBtnCategories: document.getElementById("mobile-menu-btn-categories"),
-    mobileMenuBtnBackup: document.getElementById("mobile-menu-btn-backup"),
-    fabOpenTx: document.getElementById("fab-open-tx-modal")
+    btnResetData: document.getElementById("btn-reset-data")
   };
 
-  // 3. Logika Perhitungan Keuangan Akun
+  // 3. Helper Format Tanggal & Bulan
+  function getSelectedMonthKey() {
+    const y = currentMonthDate.getFullYear();
+    const m = String(currentMonthDate.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+  }
+
+  function getSelectedMonthDisplay() {
+    return currentMonthDate.toLocaleDateString("id-ID", {
+      month: "short",
+      year: "numeric"
+    });
+  }
+
+  // 4. Perhitungan Saldo Akun (Aset, Liabilitas, Net Worth)
   function calculateAccountBalances() {
     const balances = {};
     const creditDebts = {};
@@ -181,69 +233,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
     appState.transactions.forEach(tx => {
       const amt = Number(tx.amount) || 0;
+      const txCurr = tx.currency || appState.baseCurrency;
 
-      if (tx.type === "income") {
-        const acc = appState.accounts.find(a => a.id === tx.accountId);
+      if (tx.type === "expense") {
+        const acc = appState.accounts.find(a => a.id === tx.account);
         if (acc) {
-          const accCurr = acc.currency || appState.baseCurrency;
-          const convertedAmt = Currency.convert(amt, tx.currency, accCurr, appState.currencies);
-
+          const convertedAmt = Currency.convert(amt, txCurr, acc.currency, appState.currencies);
           if (acc.type === "credit") {
-            // Pemasukan ke kartu kredit (misal cashback / refund) mengurangi tagihan
-            creditDebts[acc.id] = (creditDebts[acc.id] || 0) - convertedAmt;
-          } else if (acc.type === "loan") {
-            // Pemasukan langsung ke akun pinjaman mengurangi pokok pinjaman
-            loanBalances[acc.id] = (loanBalances[acc.id] || 0) - convertedAmt;
-          } else {
-            balances[acc.id] = (balances[acc.id] || 0) + convertedAmt;
-          }
-        }
-      } else if (tx.type === "expense") {
-        const acc = appState.accounts.find(a => a.id === tx.accountId);
-        if (acc) {
-          const accCurr = acc.currency || appState.baseCurrency;
-          const convertedAmt = Currency.convert(amt, tx.currency, accCurr, appState.currencies);
-
-          if (acc.type === "credit") {
-            // Belanja kartu kredit menambah tagihan
             creditDebts[acc.id] = (creditDebts[acc.id] || 0) + convertedAmt;
-          } else if (acc.type === "loan") {
-            // Penarikan pinjaman baru menambah pokok pinjaman
-            loanBalances[acc.id] = (loanBalances[acc.id] || 0) + convertedAmt;
           } else {
             balances[acc.id] = (balances[acc.id] || 0) - convertedAmt;
           }
         }
-      } else if (tx.type === "transfer") {
-        // Keluar dari akun sumber
-        const fromAcc = appState.accounts.find(a => a.id === tx.fromAccountId);
-        if (fromAcc) {
-          const fromCurr = fromAcc.currency || appState.baseCurrency;
-          const convertedFrom = Currency.convert(amt, tx.currency, fromCurr, appState.currencies);
-
-          if (fromAcc.type === "credit") {
-            creditDebts[fromAcc.id] = (creditDebts[fromAcc.id] || 0) + convertedFrom;
-          } else if (fromAcc.type === "loan") {
-            loanBalances[fromAcc.id] = (loanBalances[fromAcc.id] || 0) + convertedFrom;
+      } else if (tx.type === "income") {
+        const acc = appState.accounts.find(a => a.id === tx.account);
+        if (acc) {
+          const convertedAmt = Currency.convert(amt, txCurr, acc.currency, appState.currencies);
+          if (acc.type === "credit") {
+            creditDebts[acc.id] = Math.max(0, (creditDebts[acc.id] || 0) - convertedAmt);
           } else {
-            balances[fromAcc.id] = (balances[fromAcc.id] || 0) - convertedFrom;
+            balances[acc.id] = (balances[acc.id] || 0) + convertedAmt;
+          }
+        }
+      } else if (tx.type === "transfer") {
+        const fromAcc = appState.accounts.find(a => a.id === tx.account);
+        const toAcc = appState.accounts.find(a => a.id === tx.accountTo);
+
+        if (fromAcc) {
+          const fromAmt = Currency.convert(amt, txCurr, fromAcc.currency, appState.currencies);
+          if (fromAcc.type === "credit") {
+            creditDebts[fromAcc.id] = (creditDebts[fromAcc.id] || 0) + fromAmt;
+          } else {
+            balances[fromAcc.id] = (balances[fromAcc.id] || 0) - fromAmt;
           }
         }
 
-        // Masuk ke akun tujuan
-        const toAcc = appState.accounts.find(a => a.id === tx.toAccountId);
         if (toAcc) {
-          const toCurr = toAcc.currency || appState.baseCurrency;
-          const convertedTo = Currency.convert(amt, tx.currency, toCurr, appState.currencies);
-
+          const toAmt = Currency.convert(amt, txCurr, toAcc.currency, appState.currencies);
           if (toAcc.type === "credit") {
-            // Transfer ke kartu kredit = Pembayaran tagihan
-            creditDebts[toAcc.id] = (creditDebts[toAcc.id] || 0) - convertedTo;
+            creditDebts[toAcc.id] = Math.max(0, (creditDebts[toAcc.id] || 0) - toAmt);
           } else if (toAcc.type === "loan") {
-            // Transfer ke pinjaman = Pembayaran cicilan pokok
-            loanBalances[toAcc.id] = (loanBalances[toAcc.id] || 0) - convertedTo;
+            loanBalances[toAcc.id] = Math.max(0, (loanBalances[toAcc.id] || 0) - toAmt);
           } else {
-            balances[toAcc.id] = (balances[toAcc.id] || 0) + convertedTo;
+            balances[toAcc.id] = (balances[toAcc.id] || 0) + toAmt;
           }
         }
       }
@@ -252,860 +284,705 @@ document.addEventListener("DOMContentLoaded", () => {
     return { balances, creditDebts, loanBalances };
   }
 
-  // Hitung Siklus Penagihan & Tanggal Jatuh Tempo Credit Card
-  function calculateCreditCardCycle(account, transactions, currencies, baseCurrency) {
-    const statementDay = Math.min(31, Math.max(1, parseInt(account.statementDay, 10) || 15));
-    const dueDay = Math.min(31, Math.max(1, parseInt(account.dueDay, 10) || 5));
+  // Perhitungan Siklus Penagihan Kartu Kredit
+  function calculateCCBillingCycle(account, todayDate) {
+    const statementDay = account.statementDay || 15;
+    const dueDay = account.dueDay || 5;
 
-    const now = new Date();
-    const todayYear = now.getFullYear();
-    const todayMonth = now.getMonth();
-    const todayDate = now.getDate();
+    const today = todayDate ? new Date(todayDate) : new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    const currentDay = today.getDate();
 
-    function getValidDate(year, month, day) {
-      const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
-      return new Date(year, month, Math.min(day, lastDayOfMonth));
-    }
+    let cycleEndYear = currentYear;
+    let cycleEndMonth = currentMonth;
 
-    let cycleStartDate;
-    let cycleEndDate;
-
-    if (todayDate > statementDay) {
-      cycleStartDate = getValidDate(todayYear, todayMonth, statementDay + 1);
-      cycleEndDate = getValidDate(todayYear, todayMonth + 1, statementDay);
-    } else {
-      cycleStartDate = getValidDate(todayYear, todayMonth - 1, statementDay + 1);
-      cycleEndDate = getValidDate(todayYear, todayMonth, statementDay);
-    }
-
-    const formatDateIso = d => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    };
-
-    const startIso = formatDateIso(cycleStartDate);
-    const endIso = formatDateIso(cycleEndDate);
-
-    // Format rentang tanggal ramah (contoh: 16 Nov – 15 Des 2026)
-    const startStr = cycleStartDate.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-    const endStr = cycleEndDate.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
-    const cycleRangeText = `${startStr} – ${endStr}`;
-
-    // Hitung total transaksi belanja kartu kredit dalam periode aktif ini
-    let cycleTotalInAccountCurr = 0;
-    const accCurr = account.currency || baseCurrency;
-
-    transactions.forEach(tx => {
-      if (tx.accountId === account.id && tx.type === "expense" && tx.date) {
-        if (tx.date >= startIso && tx.date <= endIso) {
-          const amtInAcc = Currency.convert(tx.amount, tx.currency, accCurr, currencies);
-          cycleTotalInAccountCurr += amtInAcc;
-        }
+    if (currentDay > statementDay) {
+      cycleEndMonth += 1;
+      if (cycleEndMonth > 11) {
+        cycleEndMonth = 0;
+        cycleEndYear += 1;
       }
-    });
-
-    // Hitung Tanggal Jatuh Tempo Berikutnya & Hitung Mundur (H-X)
-    const todayMidnight = new Date(todayYear, todayMonth, todayDate);
-    const candidateDueThisMonth = getValidDate(todayYear, todayMonth, dueDay);
-    const candidateDueNextMonth = getValidDate(todayYear, todayMonth + 1, dueDay);
-
-    let nextDueDate;
-    if (candidateDueThisMonth >= todayMidnight) {
-      nextDueDate = candidateDueThisMonth;
-    } else {
-      nextDueDate = candidateDueNextMonth;
     }
 
-    const diffMs = nextDueDate.getTime() - todayMidnight.getTime();
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    const cycleEndDate = new Date(cycleEndYear, cycleEndMonth, statementDay);
 
-    const dueFormatted = nextDueDate.toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "short",
-      year: "numeric"
-    });
+    let cycleStartMonth = cycleEndMonth - 1;
+    let cycleStartYear = cycleEndYear;
+    if (cycleStartMonth < 0) {
+      cycleStartMonth = 11;
+      cycleStartYear -= 1;
+    }
+    const cycleStartDate = new Date(cycleStartYear, cycleStartMonth, statementDay + 1);
 
-    let dueStatusBadgeClass = "badge-due-indicator badge-due-normal";
-    let countdownText = `H-${diffDays}`;
-    let icon = "⏰";
+    let dueYear = cycleEndYear;
+    let dueMonth = cycleEndMonth;
+    if (dueDay <= statementDay) {
+      dueMonth += 1;
+      if (dueMonth > 11) {
+        dueMonth = 0;
+        dueYear += 1;
+      }
+    }
+    const dueDate = new Date(dueYear, dueMonth, dueDay);
 
-    if (diffDays === 0) {
-      countdownText = "Hari Ini (Jatuh Tempo)";
+    const fmt = d => d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+    const fmtFull = d => d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+    const cycleRangeText = `${fmt(cycleStartDate)} – ${fmtFull(cycleEndDate)}`;
+    const dueDateText = fmtFull(dueDate);
+
+    const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    let dueStatusText = `Jatuh tempo: ${dueDateText}`;
+    let isWarning = false;
+
+    if (diffDays < 0) {
+      dueStatusText = `⚠️ Terlewat ${Math.abs(diffDays)} hari (${dueDateText})`;
+      isWarning = true;
+    } else if (diffDays <= 7) {
+      dueStatusText = `⏰ Jatuh tempo ${diffDays} hari lagi (${dueDateText})`;
+      isWarning = true;
     }
 
     return {
-      statementDay,
-      dueDay,
+      cycleStartDate,
+      cycleEndDate,
+      dueDate,
       cycleRangeText,
-      cycleTotalInAccountCurr,
-      nextDueDateFormatted: dueFormatted,
-      daysRemaining: diffDays,
-      countdownText,
-      dueStatusBadgeClass,
-      icon
+      dueDateText,
+      dueStatusText,
+      isWarning
     };
   }
 
-  // Hitung Arus Kas Bulan Berjalan
-  function calculateMonthlyCashflow() {
-    const now = new Date();
-    const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-    let monthIncome = 0;
-    let monthExpense = 0;
+  // 5. Perhitungan Arus Kas Bulan yang Dipilih
+  function calculateMonthCashflow(monthKey) {
+    let incomeInBase = 0;
+    let expenseInBase = 0;
 
     appState.transactions.forEach(tx => {
-      if (!tx.date) return;
-      const txYearMonth = tx.date.slice(0, 7);
+      if (!tx.date || !tx.date.startsWith(monthKey)) return;
 
-      if (txYearMonth === currentYearMonth) {
-        const amtInBase = Currency.convert(tx.amount, tx.currency, appState.baseCurrency, appState.currencies);
-        if (tx.type === "income") {
-          monthIncome += amtInBase;
-        } else if (tx.type === "expense") {
-          monthExpense += amtInBase;
-        }
+      const amt = Number(tx.amount) || 0;
+      const txCurr = tx.currency || appState.baseCurrency;
+      const inBase = Currency.convert(amt, txCurr, appState.baseCurrency, appState.currencies);
+
+      if (tx.type === "income") {
+        incomeInBase += inBase;
+      } else if (tx.type === "expense") {
+        expenseInBase += inBase;
       }
     });
 
-    return { income: monthIncome, expense: monthExpense };
+    return {
+      income: incomeInBase,
+      expense: expenseInBase,
+      net: incomeInBase - expenseInBase
+    };
   }
 
-  // Hitung Pengeluaran per Kategori
-  function calculateCategoryExpenses() {
-    const categoryTotals = {};
-    let totalExpenseInBase = 0;
+  // 6. RENDER HALAMAN TAB 1: TRANSAKSI (Gaya Money Manager)
+  function renderTabTransaksi() {
+    const monthKey = getSelectedMonthKey();
+    const monthFlow = calculateMonthCashflow(monthKey);
 
-    (appState.categories.expense || []).forEach(cat => {
-      categoryTotals[cat.id] = {
-        name: cat.name,
-        icon: cat.icon || "🏷️",
-        color: cat.color || "#10b981",
-        total: 0
-      };
-    });
+    // Update 3 Kolom Summary Bar Transaksi
+    dom.transSumIncome.textContent = Currency.format(monthFlow.income, appState.baseCurrency, appState.currencies);
+    dom.transSumExpense.textContent = Currency.format(monthFlow.expense, appState.baseCurrency, appState.currencies);
 
-    appState.transactions.forEach(tx => {
-      if (tx.type === "expense") {
-        const catId = tx.categoryId || "cat-lainnya-exp";
-        const amtInBase = Currency.convert(tx.amount, tx.currency, appState.baseCurrency, appState.currencies);
-        totalExpenseInBase += amtInBase;
-
-        if (!categoryTotals[catId]) {
-          categoryTotals[catId] = {
-            name: "Lainnya",
-            icon: "📦",
-            color: "#64748b",
-            total: 0
-          };
-        }
-        categoryTotals[catId].total += amtInBase;
-      }
-    });
-
-    return { categoryTotals, totalExpenseInBase };
-  }
-
-  // 4. Rendering Tampilan Utama
-  function renderAll() {
-    renderViewControlInfo();
-    const { balances, creditDebts, loanBalances } = calculateAccountBalances();
-    const monthlyCashflow = calculateMonthlyCashflow();
-    renderHeroCards(balances, creditDebts, loanBalances, monthlyCashflow);
-    renderAccountGroups(balances, creditDebts, loanBalances);
-    renderCategoryBreakdown();
-    renderTransactionsFeed();
-    populateSelectOptions();
-  }
-
-  function renderViewControlInfo() {
-    const baseCode = appState.baseCurrency;
-    if (dom.baseCurrIndicator) {
-      dom.baseCurrIndicator.textContent = `Basis: ${baseCode}`;
-    }
-    if (dom.ratesModalBaseCode) {
-      dom.ratesModalBaseCode.textContent = baseCode;
-    }
-
-    if (appState.viewMode === "base") {
-      dom.btnModeBase.classList.add("active");
-      dom.btnModeCurr.classList.remove("active");
+    const netFormatted = Currency.format(monthFlow.net, appState.baseCurrency, appState.currencies);
+    dom.transSumNet.textContent = (monthFlow.net > 0 ? "+" : "") + netFormatted;
+    if (monthFlow.net > 0) {
+      dom.transSumNet.style.color = "#a7f3d0";
+    } else if (monthFlow.net < 0) {
+      dom.transSumNet.style.color = "#fecdd3";
     } else {
-      dom.btnModeBase.classList.remove("active");
-      dom.btnModeCurr.classList.add("active");
+      dom.transSumNet.style.color = "#ffffff";
     }
+
+    // Filter transaksi berdasarkan bulan & query pencarian
+    let txs = appState.transactions.filter(t => t.date && t.date.startsWith(monthKey));
+
+    if (searchQuery.trim() !== "") {
+      const q = searchQuery.trim().toLowerCase();
+      txs = txs.filter(t => {
+        const note = (t.note || "").toLowerCase();
+        const cat = appState.categories.find(c => c.id === t.category);
+        const catName = cat ? cat.name.toLowerCase() : "";
+        const acc = appState.accounts.find(a => a.id === t.account);
+        const accName = acc ? acc.name.toLowerCase() : "";
+        return note.includes(q) || catName.includes(q) || accName.includes(q);
+      });
+    }
+
+    dom.transDateGroupsContainer.innerHTML = "";
+
+    if (txs.length === 0) {
+      dom.transDateGroupsContainer.innerHTML = `
+        <div class="empty-state-card">
+          <div class="empty-state-icon">📝</div>
+          <div class="empty-state-title">Belum Ada Transaksi</div>
+          <div class="empty-state-desc">
+            ${searchQuery ? "Tidak ditemukan transaksi sesuai pencarian Anda." : `Belum ada catatan transaksi pada bulan ${escapeHTML(getSelectedMonthDisplay())}. Tekan tombol '+' di bawah untuk mencatat.`}
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Kelompokkan transaksi per tanggal descending
+    const dateGroups = {};
+    txs.forEach(t => {
+      const d = t.date;
+      if (!dateGroups[d]) dateGroups[d] = [];
+      dateGroups[d].push(t);
+    });
+
+    const sortedDates = Object.keys(dateGroups).sort((a, b) => b.localeCompare(a));
+    const frag = document.createDocumentFragment();
+
+    sortedDates.forEach(dateStr => {
+      const dayTxs = dateGroups[dateStr];
+      const dateObj = new Date(dateStr + "T00:00:00");
+      const dayNum = dateObj.getDate();
+      const dayOfWeek = dateObj.getDay();
+      const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+      const dayName = dayNames[dayOfWeek] || "";
+
+      let dayBadgeClass = "day-weekday";
+      if (dayOfWeek === 0) dayBadgeClass = "day-sun";
+      if (dayOfWeek === 6) dayBadgeClass = "day-sat";
+
+      const monthYearStr = String(dateObj.getMonth() + 1).padStart(2, "0") + "." + dateObj.getFullYear();
+
+      // Hitung total pemasukan & pengeluaran pada hari ini
+      let dayIncome = 0;
+      let dayExpense = 0;
+      dayTxs.forEach(t => {
+        const amt = Number(t.amount) || 0;
+        const txCurr = t.currency || appState.baseCurrency;
+        const inBase = Currency.convert(amt, txCurr, appState.baseCurrency, appState.currencies);
+        if (t.type === "income") dayIncome += inBase;
+        if (t.type === "expense") dayExpense += inBase;
+      });
+
+      const groupEl = document.createElement("div");
+      groupEl.className = "day-group-section";
+
+      const headerEl = document.createElement("div");
+      headerEl.className = "day-group-header";
+      headerEl.innerHTML = `
+        <div class="day-header-left">
+          <span class="day-big-date">${dayNum}</span>
+          <span class="day-badge ${dayBadgeClass}">${dayName}</span>
+          <span class="day-month-year">${monthYearStr}</span>
+        </div>
+        <div class="day-header-right">
+          ${dayIncome > 0 ? `<span class="day-income-total tabular-nums">+${escapeHTML(Currency.format(dayIncome, appState.baseCurrency, appState.currencies))}</span>` : ""}
+          ${dayExpense > 0 ? `<span class="day-expense-total tabular-nums">-${escapeHTML(Currency.format(dayExpense, appState.baseCurrency, appState.currencies))}</span>` : ""}
+        </div>
+      `;
+      groupEl.appendChild(headerEl);
+
+      dayTxs.forEach(tx => {
+        const rowEl = document.createElement("div");
+        rowEl.className = "tx-flat-item";
+
+        const cat = appState.categories.find(c => c.id === tx.category);
+        let catIcon = "💸";
+        let catColor = "#ef4444";
+        let catName = "Pengeluaran";
+
+        if (tx.type === "income") {
+          catIcon = "💰";
+          catColor = "#10b981";
+          catName = "Pemasukan";
+        } else if (tx.type === "transfer") {
+          catIcon = "🔄";
+          catColor = "#3b82f6";
+          catName = "Transfer";
+        }
+
+        if (cat) {
+          catIcon = cat.icon || catIcon;
+          catColor = cat.color || catColor;
+          catName = cat.name || catName;
+        }
+
+        const fromAcc = appState.accounts.find(a => a.id === tx.account);
+        const toAcc = appState.accounts.find(a => a.id === tx.accountTo);
+
+        let accountText = fromAcc ? fromAcc.name : "Akun";
+        if (tx.type === "transfer" && toAcc) {
+          accountText = `${fromAcc ? fromAcc.name : "?"} → ${toAcc.name}`;
+        }
+
+        const amtStr = Currency.format(tx.amount, tx.currency, appState.currencies);
+        let sign = "-";
+        let amtClass = "expense";
+
+        if (tx.type === "income") {
+          sign = "+";
+          amtClass = "income";
+        } else if (tx.type === "transfer") {
+          sign = "";
+          amtClass = "transfer";
+        }
+
+        rowEl.innerHTML = `
+          <div class="tx-flat-icon-wrap" style="background-color: ${escapeHTML(catColor)}18; color: ${escapeHTML(catColor)};">
+            ${escapeHTML(catIcon)}
+          </div>
+          <div class="tx-flat-info">
+            <div class="tx-flat-title-row">
+              <span class="tx-flat-cat-name">${escapeHTML(catName)}</span>
+              ${tx.note ? `<span class="tx-flat-note">${escapeHTML(tx.note)}</span>` : ""}
+            </div>
+            <div class="tx-flat-account-name">${escapeHTML(accountText)}</div>
+          </div>
+          <div class="tx-flat-right">
+            <div class="tx-flat-amount ${amtClass} tabular-nums">${sign}${escapeHTML(amtStr)}</div>
+            <button type="button" class="btn-del-tx-flat" data-id="${escapeHTML(tx.id)}" title="Hapus Transaksi">×</button>
+          </div>
+        `;
+
+        groupEl.appendChild(rowEl);
+      });
+
+      frag.appendChild(groupEl);
+    });
+
+    dom.transDateGroupsContainer.appendChild(frag);
   }
 
-  function renderHeroCards(balances, creditDebts, loanBalances, cashflow) {
+  // Event Delegation untuk Hapus Transaksi
+  dom.transDateGroupsContainer.addEventListener("click", e => {
+    const delBtn = e.target.closest(".btn-del-tx-flat");
+    if (delBtn) {
+      e.stopPropagation();
+      deleteTransaction(delBtn.dataset.id);
+    }
+  });
+
+  // 7. RENDER HALAMAN TAB 2: STATISTIK & DONUT CHART
+  function renderTabStatistik() {
+    const monthKey = getSelectedMonthKey();
+
+    const txs = appState.transactions.filter(
+      t => t.date && t.date.startsWith(monthKey) && t.type === currentStatType
+    );
+
+    const categorySums = {};
+    let totalInBase = 0;
+
+    txs.forEach(t => {
+      const amt = Number(t.amount) || 0;
+      const txCurr = t.currency || appState.baseCurrency;
+      const inBase = Currency.convert(amt, txCurr, appState.baseCurrency, appState.currencies);
+
+      const catId = t.category || "uncategorized";
+      categorySums[catId] = (categorySums[catId] || 0) + inBase;
+      totalInBase += inBase;
+    });
+
+    dom.donutCenterLabel.textContent = currentStatType === "expense" ? "Total Pengeluaran" : "Total Pendapatan";
+    dom.donutCenterVal.textContent = Currency.format(totalInBase, appState.baseCurrency, appState.currencies);
+
+    drawDonutChart(categorySums, totalInBase);
+
+    dom.statRankingList.innerHTML = "";
+
+    const catIds = Object.keys(categorySums);
+    if (totalInBase <= 0 || catIds.length === 0) {
+      dom.statRankingList.innerHTML = `
+        <div style="padding: 2rem 1rem; text-align: center; color: var(--color-gray-400); font-size: 0.85rem;">
+          Belum ada catatan ${currentStatType === "expense" ? "pengeluaran" : "pemasukan"} pada bulan ini.
+        </div>
+      `;
+      return;
+    }
+
+    const sortedCats = catIds
+      .map(id => {
+        const cat = appState.categories.find(c => c.id === id) || {
+          name: "Lainnya",
+          icon: "🏷️",
+          color: "#9ca3af"
+        };
+        const sum = categorySums[id];
+        const pct = Math.max(1, Math.round((sum / totalInBase) * 100));
+        return { id, ...cat, sum, pct };
+      })
+      .sort((a, b) => b.sum - a.sum);
+
+    const frag = document.createDocumentFragment();
+    sortedCats.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "stat-cat-row";
+      row.innerHTML = `
+        <div class="stat-pct-badge" style="background-color: ${escapeHTML(item.color)};">
+          ${item.pct}%
+        </div>
+        <div class="stat-cat-body">
+          <div class="stat-cat-title-row">
+            <span class="stat-cat-name">${escapeHTML(item.icon)} ${escapeHTML(item.name)}</span>
+            <span class="stat-cat-val tabular-nums">${escapeHTML(Currency.format(item.sum, appState.baseCurrency, appState.currencies))}</span>
+          </div>
+          <div class="stat-cat-bar-bg">
+            <div class="stat-cat-bar-fill" style="width: ${item.pct}%; background-color: ${escapeHTML(item.color)};"></div>
+          </div>
+        </div>
+      `;
+      frag.appendChild(row);
+    });
+    dom.statRankingList.appendChild(frag);
+  }
+
+  function drawDonutChart(categorySums, total) {
+    const canvas = dom.statDonutCanvas;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const size = 220;
+
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = size + "px";
+    canvas.style.height = size + "px";
+
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, size, size);
+
+    const centerX = size / 2;
+    const centerY = size / 2;
+    const radius = 80;
+    const lineWidth = 26;
+
+    if (total <= 0) {
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      ctx.lineWidth = lineWidth;
+      ctx.strokeStyle = "#e5e7eb";
+      ctx.stroke();
+      return;
+    }
+
+    let startAngle = -0.5 * Math.PI;
+
+    Object.keys(categorySums).forEach(catId => {
+      const sum = categorySums[catId];
+      if (sum <= 0) return;
+
+      const sliceAngle = (sum / total) * (2 * Math.PI);
+      const cat = appState.categories.find(c => c.id === catId);
+      const color = cat && cat.color ? cat.color : "#10b981";
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+      ctx.lineWidth = lineWidth;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+
+      startAngle += sliceAngle;
+    });
+  }
+
+  // 8. RENDER HALAMAN TAB 3: ASET & LIABILITAS (6 Kelompok Akun)
+  function renderTabAset() {
+    const { balances, creditDebts, loanBalances } = calculateAccountBalances();
+
     let totalLiquidInBase = 0;
-    let totalInvestmentInBase = 0;
+    let totalInvestInBase = 0;
     let totalCreditDebtInBase = 0;
     let totalLoanInBase = 0;
-    const totalsPerCurrency = {};
-    const liquidAccountNames = [];
-
-    Object.keys(appState.currencies).forEach(c => {
-      totalsPerCurrency[c] = 0;
-    });
 
     appState.accounts.forEach(acc => {
       const accCurr = acc.currency || appState.baseCurrency;
 
       if (acc.type === "credit") {
         const debt = creditDebts[acc.id] || 0;
-        const debtInBase = Currency.convert(debt, accCurr, appState.baseCurrency, appState.currencies);
-        totalCreditDebtInBase += debtInBase;
-        totalsPerCurrency[accCurr] = (totalsPerCurrency[accCurr] || 0) - debt;
+        totalCreditDebtInBase += Currency.convert(debt, accCurr, appState.baseCurrency, appState.currencies);
       } else if (acc.type === "loan") {
-        const loan = loanBalances[acc.id] || 0;
-        const loanInBase = Currency.convert(loan, accCurr, appState.baseCurrency, appState.currencies);
-        totalLoanInBase += loanInBase;
-        totalsPerCurrency[accCurr] = (totalsPerCurrency[accCurr] || 0) - loan;
+        const loanBal = loanBalances[acc.id] || 0;
+        totalLoanInBase += Currency.convert(loanBal, accCurr, appState.baseCurrency, appState.currencies);
+      } else if (acc.type === "investment") {
+        const bal = balances[acc.id] || 0;
+        totalInvestInBase += Currency.convert(bal, accCurr, appState.baseCurrency, appState.currencies);
       } else {
         const bal = balances[acc.id] || 0;
-        const balInBase = Currency.convert(bal, accCurr, appState.baseCurrency, appState.currencies);
-        totalsPerCurrency[accCurr] = (totalsPerCurrency[accCurr] || 0) + bal;
-
-        if (acc.type === "investment") {
-          totalInvestmentInBase += balInBase;
-        } else {
-          // cash, bank, ewallet (likuid)
-          totalLiquidInBase += balInBase;
-          liquidAccountNames.push(acc.name);
-        }
+        totalLiquidInBase += Currency.convert(bal, accCurr, appState.baseCurrency, appState.currencies);
       }
     });
 
+    const totalAssetsInBase = totalLiquidInBase + totalInvestInBase;
     const totalLiabilitiesInBase = totalCreditDebtInBase + totalLoanInBase;
+    const netWorthInBase = totalAssetsInBase - totalLiabilitiesInBase;
 
-    // 1. Kartu Hero Sisa Uang Siap Pakai
-    dom.liquidBalance.textContent = Currency.format(totalLiquidInBase, appState.baseCurrency, appState.currencies);
-    dom.creditDebt.textContent = Currency.format(totalLiabilitiesInBase, appState.baseCurrency, appState.currencies);
+    dom.assetSumAssets.textContent = Currency.format(totalAssetsInBase, appState.baseCurrency, appState.currencies);
+    dom.assetSumLiabilities.textContent = Currency.format(totalLiabilitiesInBase, appState.baseCurrency, appState.currencies);
+    dom.assetSumNetworth.textContent = Currency.format(netWorthInBase, appState.baseCurrency, appState.currencies);
 
-    if (liquidAccountNames.length > 0) {
-      dom.liquidAccountsSummary.textContent = `Akun Likuid: ${liquidAccountNames.slice(0, 3).join(", ")}${liquidAccountNames.length > 3 ? "..." : ""}`;
-    } else {
-      dom.liquidAccountsSummary.textContent = "Belum ada akun likuid terdaftar";
-    }
+    dom.assetFlatGroupsList.innerHTML = "";
 
-    const totalAssets = totalLiquidInBase + totalInvestmentInBase;
-    const liquidPercent = totalAssets > 0 ? Math.round((totalLiquidInBase / totalAssets) * 100) : 100;
-    dom.liquidPercentBadge.textContent = `${liquidPercent}% Likuiditas`;
+    const groupsOrder = [
+      { id: "cash", name: "Uang Tunai / Cash", icon: "💵" },
+      { id: "bank", name: "Rekening Bank", icon: "🏦" },
+      { id: "ewallet", name: "E-Wallet", icon: "📱" },
+      { id: "credit", name: "Kartu Kredit & PayLater", icon: "💳" },
+      { id: "loan", name: "Pinjaman & Cicilan Pokok", icon: "🤝" },
+      { id: "investment", name: "Investasi & Aset", icon: "📈" }
+    ];
 
-    // 2. Kartu Hero Net Worth (Kekayaan Bersih = Total Aset - Total Kewajiban)
-    const netWorthInBase = totalAssets - totalLiabilitiesInBase;
+    const frag = document.createDocumentFragment();
 
-    if (appState.viewMode === "base") {
-      dom.netWorth.textContent = Currency.format(netWorthInBase, appState.baseCurrency, appState.currencies);
-      dom.netWorthSubtext.textContent = `Aset: ${Currency.format(totalAssets, appState.baseCurrency, appState.currencies)} − Kewajiban: ${Currency.format(totalLiabilitiesInBase, appState.baseCurrency, appState.currencies)}`;
-      dom.breakdownDiv.style.display = "none";
-    } else {
-      dom.netWorth.textContent = "Multi-Mata Uang";
-      dom.netWorthSubtext.textContent = "Rincian saldo menurut valuta masing-masing akun:";
-      dom.breakdownDiv.style.display = "flex";
-      dom.breakdownDiv.innerHTML = "";
+    groupsOrder.forEach(grp => {
+      const accs = appState.accounts.filter(a => a.type === grp.id);
+      if (accs.length === 0) return;
 
-      Object.keys(totalsPerCurrency).forEach(c => {
-        const amt = totalsPerCurrency[c];
-        if (amt !== 0 || c === appState.baseCurrency) {
-          const row = document.createElement("div");
-          row.style.display = "flex";
-          row.style.justifyContent = "space-between";
-          row.innerHTML = `<span>${c}:</span> <strong class="tabular-nums">${Currency.format(amt, c, appState.currencies)}</strong>`;
-          dom.breakdownDiv.appendChild(row);
-        }
-      });
-    }
-
-    // 3. Cashflow Bulan Berjalan
-    dom.statMonthIncome.textContent = `+${Currency.format(cashflow.income, appState.baseCurrency, appState.currencies)}`;
-    dom.statMonthExpense.textContent = `-${Currency.format(cashflow.expense, appState.baseCurrency, appState.currencies)}`;
-  }
-
-  // 5. Render 6 Kelompok Akun Keuangan (Grouped Containers + Accordion)
-  function renderAccountGroups(balances, creditDebts, loanBalances) {
-    dom.accountsContainer.innerHTML = "";
-
-    const orderedGroupKeys = ["cash", "bank", "ewallet", "credit", "loan", "investment"];
-
-    orderedGroupKeys.forEach(typeKey => {
-      const typeConfig = Config.ACCOUNT_TYPES[typeKey];
-      if (!typeConfig) return;
-
-      const groupAccounts = appState.accounts.filter(a => a.type === typeKey);
-      const isCollapsed = Boolean(collapsedGroups[typeKey]);
-
-      // Hitung Subtotal Kategori dalam Mata Uang Utama
       let groupSubtotalInBase = 0;
-      groupAccounts.forEach(acc => {
+      accs.forEach(acc => {
         const accCurr = acc.currency || appState.baseCurrency;
+        let val = 0;
+        if (acc.type === "credit") val = creditDebts[acc.id] || 0;
+        else if (acc.type === "loan") val = loanBalances[acc.id] || 0;
+        else val = balances[acc.id] || 0;
+
+        groupSubtotalInBase += Currency.convert(val, accCurr, appState.baseCurrency, appState.currencies);
+      });
+
+      const sectionEl = document.createElement("div");
+      sectionEl.className = "asset-group-section";
+
+      const hdrEl = document.createElement("div");
+      hdrEl.className = "asset-group-hdr";
+      hdrEl.innerHTML = `
+        <div class="asset-group-hdr-left">
+          <span>${grp.icon}</span>
+          <span>${escapeHTML(grp.name)} (${accs.length})</span>
+        </div>
+        <div class="asset-group-subtotal tabular-nums">
+          ${escapeHTML(Currency.format(groupSubtotalInBase, appState.baseCurrency, appState.currencies))}
+        </div>
+      `;
+      sectionEl.appendChild(hdrEl);
+
+      accs.forEach(acc => {
+        const rowEl = document.createElement("div");
+        rowEl.className = "asset-item-flat";
+
+        const accCurr = acc.currency || appState.baseCurrency;
+        const isBase = accCurr === appState.baseCurrency;
+
         if (acc.type === "credit") {
           const debt = creditDebts[acc.id] || 0;
-          groupSubtotalInBase += Currency.convert(debt, accCurr, appState.baseCurrency, appState.currencies);
+          const limit = Number(acc.creditLimit) || 0;
+          const availLimit = Math.max(0, limit - debt);
+          const cycle = calculateCCBillingCycle(acc);
+
+          rowEl.innerHTML = `
+            <div class="asset-item-icon" style="background-color: #fee2e2; color: #ef4444;">
+              ${escapeHTML(acc.icon || "💳")}
+            </div>
+            <div class="asset-item-details">
+              <div class="asset-item-title">${escapeHTML(acc.name)}</div>
+              <div class="asset-item-meta">Cetak Tgl ${acc.statementDay || 15} • Jth Tempo Tgl ${acc.dueDay || 5}</div>
+              <div class="asset-cc-cycle-tag ${cycle.isWarning ? "warning" : "normal"}">
+                ${escapeHTML(cycle.dueStatusText)} • Periode: ${escapeHTML(cycle.cycleRangeText)}
+              </div>
+            </div>
+            <div class="asset-item-right">
+              <div class="asset-item-amount text-expense tabular-nums">
+                ${escapeHTML(Currency.format(debt, accCurr, appState.currencies))} <span class="cc-tagihan-lbl">(Tagihan)</span>
+              </div>
+              <div class="asset-cc-limit tabular-nums">
+                Sisa Limit: ${escapeHTML(Currency.format(availLimit, accCurr, appState.currencies))}
+              </div>
+              <div class="asset-item-btn-group">
+                <button type="button" class="btn-acc-action btn-edit-account" data-id="${escapeHTML(acc.id)}">✏️</button>
+                <button type="button" class="btn-acc-action btn-delete-account" data-id="${escapeHTML(acc.id)}">🗑️</button>
+              </div>
+            </div>
+          `;
         } else if (acc.type === "loan") {
-          const loan = loanBalances[acc.id] || 0;
-          groupSubtotalInBase += Currency.convert(loan, accCurr, appState.baseCurrency, appState.currencies);
+          const loanBal = loanBalances[acc.id] || 0;
+
+          rowEl.innerHTML = `
+            <div class="asset-item-icon" style="background-color: #fffbeb; color: #b45309;">
+              ${escapeHTML(acc.icon || "🤝")}
+            </div>
+            <div class="asset-item-details">
+              <div class="asset-item-title">${escapeHTML(acc.name)}</div>
+              <div class="asset-item-meta">Kewajiban Pokok Pinjaman • ${escapeHTML(accCurr)}</div>
+            </div>
+            <div class="asset-item-right">
+              <div class="asset-item-amount text-expense tabular-nums">
+                ${escapeHTML(Currency.format(loanBal, accCurr, appState.currencies))}
+              </div>
+              <div class="asset-item-btn-group">
+                <button type="button" class="btn-acc-action btn-edit-account" data-id="${escapeHTML(acc.id)}">✏️</button>
+                <button type="button" class="btn-acc-action btn-delete-account" data-id="${escapeHTML(acc.id)}">🗑️</button>
+              </div>
+            </div>
+          `;
         } else {
           const bal = balances[acc.id] || 0;
-          groupSubtotalInBase += Currency.convert(bal, accCurr, appState.baseCurrency, appState.currencies);
-        }
-      });
+          const balInBase = Currency.convert(bal, accCurr, appState.baseCurrency, appState.currencies);
 
-      // Tentukan badge tipe kelompok
-      let badgeClass = "badge-liquid";
-      if (typeConfig.isLiability) {
-        badgeClass = "badge-liability";
-      } else if (!typeConfig.isLiquid) {
-        badgeClass = "badge-nonliquid";
-      }
-
-      // Container Kartu Grup
-      const groupCard = document.createElement("div");
-      groupCard.className = `account-group-card ${isCollapsed ? "is-collapsed" : ""}`;
-      groupCard.dataset.type = typeKey;
-
-      // Header Accordion
-      const header = document.createElement("div");
-      header.className = "group-header";
-      header.innerHTML = `
-        <div class="group-header-left">
-          <div class="group-icon-badge" style="background-color: ${typeConfig.defaultColor}15; color: ${typeConfig.defaultColor};">
-            ${typeConfig.icon}
-          </div>
-          <div class="group-title-row">
-            <span class="group-title">${typeConfig.name}</span>
-            <span class="group-badge ${badgeClass}">${typeConfig.groupBadge}</span>
-            <span class="group-count-badge">${groupAccounts.length} Akun</span>
-          </div>
-        </div>
-
-        <div class="group-header-right">
-          <div class="group-subtotal-wrap">
-            <div class="group-subtotal-label">${typeConfig.isLiability ? "Total Tagihan" : "Subtotal"}</div>
-            <div class="group-subtotal-val tabular-nums" style="${typeConfig.isLiability ? 'color: var(--color-expense-text);' : ''}">
-              ${Currency.format(groupSubtotalInBase, appState.baseCurrency, appState.currencies)}
+          rowEl.innerHTML = `
+            <div class="asset-item-icon" style="background-color: ${escapeHTML(acc.color || "#059669")}18; color: ${escapeHTML(acc.color || "#059669")};">
+              ${escapeHTML(acc.icon || "🏦")}
             </div>
-          </div>
-          <button type="button" class="btn-group-add" data-type="${typeKey}" title="Tambah Akun ke kelompok ini">
-            <span>➕</span> Tambah
-          </button>
-          <span class="group-chevron">▼</span>
-        </div>
-      `;
+            <div class="asset-item-details">
+              <div class="asset-item-title">${escapeHTML(acc.name)}</div>
+              <div class="asset-item-meta">${escapeHTML(accCurr)} • ${acc.type === "investment" ? "Aset Non-Likuid" : "Aset Likuid"}</div>
+            </div>
+            <div class="asset-item-right">
+              <div class="asset-item-amount tabular-nums">
+                ${escapeHTML(Currency.format(bal, accCurr, appState.currencies))}
+              </div>
+              ${!isBase ? `<div class="asset-item-sub-converted tabular-nums">≈ ${escapeHTML(Currency.format(balInBase, appState.baseCurrency, appState.currencies))}</div>` : ""}
+              <div class="asset-item-btn-group">
+                <button type="button" class="btn-acc-action btn-edit-account" data-id="${escapeHTML(acc.id)}">✏️</button>
+                <button type="button" class="btn-acc-action btn-delete-account" data-id="${escapeHTML(acc.id)}">🗑️</button>
+              </div>
+            </div>
+          `;
+        }
 
-      // Klik header untuk buka / tutup accordion (kecuali tombol + Tambah)
-      header.addEventListener("click", e => {
-        if (e.target.closest(".btn-group-add")) return;
-        collapsedGroups[typeKey] = !collapsedGroups[typeKey];
-        groupCard.classList.toggle("is-collapsed", collapsedGroups[typeKey]);
+        sectionEl.appendChild(rowEl);
       });
 
-      // Tombol + Tambah Cepat
-      const btnAdd = header.querySelector(".btn-group-add");
-      btnAdd.addEventListener("click", e => {
-        e.stopPropagation();
-        openAddAccountModal(typeKey);
-      });
-
-      // Body Accordion
-      const body = document.createElement("div");
-      body.className = "group-body";
-
-      if (groupAccounts.length === 0) {
-        // Empty State jika belum ada akun
-        body.innerHTML = `
-          <div class="group-empty-state">
-            <div style="font-size: 1.5rem;">${typeConfig.icon}</div>
-            <div>Belum ada akun di kelompok <strong>${typeConfig.name}</strong>.</div>
-            <button type="button" class="btn btn-white btn-sm btn-empty-add" data-type="${typeKey}" style="margin-top: 0.25rem;">
-              <span>➕</span> Tambah Akun ${typeConfig.categoryName}
-            </button>
-          </div>
-        `;
-        body.querySelector(".btn-empty-add").addEventListener("click", () => {
-          openAddAccountModal(typeKey);
-        });
-      } else {
-        const grid = document.createElement("div");
-        grid.className = "group-accounts-grid";
-
-        groupAccounts.forEach(acc => {
-          const accCurr = acc.currency || appState.baseCurrency;
-          const isBase = accCurr === appState.baseCurrency;
-
-          const accCard = document.createElement("div");
-          accCard.className = "account-card";
-
-          if (acc.type === "credit") {
-            // ================= KARTU KREDIT =================
-            const debt = creditDebts[acc.id] || 0;
-            const limit = Number(acc.creditLimit) || 0;
-            const remaining = Math.max(0, limit - debt);
-            const usagePercent = limit > 0 ? Math.min(100, Math.round((debt / limit) * 100)) : 0;
-
-            const cycleData = calculateCreditCardCycle(acc, appState.transactions, appState.currencies, appState.baseCurrency);
-
-            // Indikator peringatan jatuh tempo (kuning/merah bila <= 7 hari & ada tagihan)
-            let dueBadgeHtml = "";
-            if (debt > 0) {
-              if (cycleData.daysRemaining <= 3) {
-                dueBadgeHtml = `
-                  <div class="badge-due-indicator badge-due-urgent" title="Jatuh tempo sangat dekat!">
-                    <span>🚨 Jatuh Tempo: <strong>${cycleData.nextDueDateFormatted}</strong></span>
-                    <span>${cycleData.countdownText}</span>
-                  </div>
-                `;
-              } else if (cycleData.daysRemaining <= 7) {
-                dueBadgeHtml = `
-                  <div class="badge-due-indicator badge-due-warning" title="Segera lakukan pembayaran sebelum jatuh tempo">
-                    <span>⚠️ Jatuh Tempo: <strong>${cycleData.nextDueDateFormatted}</strong></span>
-                    <span>${cycleData.countdownText}</span>
-                  </div>
-                `;
-              } else {
-                dueBadgeHtml = `
-                  <div class="badge-due-indicator badge-due-normal">
-                    <span>⏰ Jatuh Tempo: <strong>${cycleData.nextDueDateFormatted}</strong></span>
-                    <span>${cycleData.countdownText}</span>
-                  </div>
-                `;
-              }
-            } else {
-              dueBadgeHtml = `
-                <div class="badge-due-indicator badge-due-normal" style="color: var(--color-brand-700); background-color: var(--color-brand-50); border-color: var(--color-brand-100);">
-                  <span>✅ Tagihan Lunas</span>
-                  <span>Due: ${cycleData.nextDueDateFormatted}</span>
-                </div>
-              `;
-            }
-
-            accCard.innerHTML = `
-              <div>
-                <div class="account-card-header">
-                  <div class="account-icon-badge" style="background-color: ${acc.color || '#f43f5e'}18; color: ${acc.color || '#f43f5e'};">
-                    ${acc.icon || "💳"}
-                  </div>
-                  <div class="account-badge-group">
-                    <span class="badge-curr">${accCurr}</span>
-                    <span class="badge-acc-type badge-credit-type">Credit Card</span>
-                  </div>
-                </div>
-
-                <div class="account-main-info">
-                  <h3 class="account-title" title="${acc.name}">${acc.name}</h3>
-                  <p class="account-desc">Limit: ${Currency.format(limit, accCurr, appState.currencies)}</p>
-                </div>
-              </div>
-
-              <div class="account-bottom-section">
-                <div class="account-balance-label">Tagihan Terpakai</div>
-                <div class="account-balance-val tabular-nums" style="color: var(--color-expense-text);">
-                  ${Currency.format(debt, accCurr, appState.currencies)}
-                </div>
-
-                <!-- Info Limit & Sisa Limit -->
-                <div class="credit-card-details">
-                  <div class="credit-detail-row">
-                    <span>Sisa Limit:</span>
-                    <strong class="tabular-nums" style="color: var(--color-brand-600);">${Currency.format(remaining, accCurr, appState.currencies)}</strong>
-                  </div>
-                  <div class="credit-bar-track">
-                    <div class="credit-bar-fill" style="width: ${usagePercent}%;"></div>
-                  </div>
-
-                  <!-- Siklus Penagihan (Billing Cycle) -->
-                  <div class="credit-cycle-box">
-                    <div class="cycle-period-row">
-                      <span>Periode Aktif:</span>
-                      <span class="cycle-period-highlight">${cycleData.cycleRangeText}</span>
-                    </div>
-                    <div class="cycle-amount-row">
-                      <span style="color: var(--color-slate-500);">Transaksi Siklus Ini:</span>
-                      <strong class="tabular-nums">${Currency.format(cycleData.cycleTotalInAccountCurr, accCurr, appState.currencies)}</strong>
-                    </div>
-                  </div>
-
-                  <!-- Indikator Jatuh Tempo & Pengingat -->
-                  ${dueBadgeHtml}
-                </div>
-
-                <div class="account-actions-row">
-                  <button type="button" class="btn btn-ghost btn-sm btn-edit-account" data-id="${acc.id}">✏️ Edit</button>
-                  <button type="button" class="btn btn-ghost btn-sm btn-delete-account" data-id="${acc.id}" style="color: var(--color-slate-400);">🗑️</button>
-                </div>
-              </div>
-            `;
-          } else if (acc.type === "loan") {
-            // ================= PINJAMAN =================
-            const loan = loanBalances[acc.id] || 0;
-            const initLoan = Number(acc.initialBalance) || 0;
-            const paid = Math.max(0, initLoan - loan);
-            const percentPaid = initLoan > 0 ? Math.min(100, Math.round((paid / initLoan) * 100)) : 100;
-
-            accCard.innerHTML = `
-              <div>
-                <div class="account-card-header">
-                  <div class="account-icon-badge" style="background-color: ${acc.color || '#d97706'}18; color: ${acc.color || '#d97706'};">
-                    ${acc.icon || "🤝"}
-                  </div>
-                  <div class="account-badge-group">
-                    <span class="badge-curr">${accCurr}</span>
-                    <span class="badge-acc-type badge-loan-type">Pinjaman</span>
-                  </div>
-                </div>
-
-                <div class="account-main-info">
-                  <h3 class="account-title" title="${acc.name}">${acc.name}</h3>
-                  <p class="account-desc">Pokok Awal: ${Currency.format(initLoan, accCurr, appState.currencies)}</p>
-                </div>
-              </div>
-
-              <div class="account-bottom-section">
-                <div class="account-balance-label">Sisa Pokok Pinjaman</div>
-                <div class="account-balance-val tabular-nums" style="color: #d97706;">
-                  ${Currency.format(loan, accCurr, appState.currencies)}
-                </div>
-
-                <div class="loan-details-box">
-                  <div style="display: flex; justify-content: space-between; font-size: 0.72rem;">
-                    <span>Sudah Terbayar:</span>
-                    <strong class="tabular-nums" style="color: var(--color-brand-600);">${Currency.format(paid, accCurr, appState.currencies)} (${percentPaid}%)</strong>
-                  </div>
-                  <div class="loan-bar-track">
-                    <div class="loan-bar-fill" style="width: ${percentPaid}%;"></div>
-                  </div>
-                  <div style="font-size: 0.7rem; color: var(--color-slate-400); margin-top: 0.15rem;">
-                    💡 Berkurang otomatis saat Anda Transfer dari Bank/E-Wallet.
-                  </div>
-                </div>
-
-                <div class="account-actions-row">
-                  <button type="button" class="btn btn-ghost btn-sm btn-edit-account" data-id="${acc.id}">✏️ Edit</button>
-                  <button type="button" class="btn btn-ghost btn-sm btn-delete-account" data-id="${acc.id}" style="color: var(--color-slate-400);">🗑️</button>
-                </div>
-              </div>
-            `;
-          } else {
-            // ================= CASH, BANK, E-WALLET, INVESTASI =================
-            const bal = balances[acc.id] || 0;
-            const balInBase = Currency.convert(bal, accCurr, appState.baseCurrency, appState.currencies);
-            const isLiquid = typeConfig.isLiquid;
-
-            accCard.innerHTML = `
-              <div>
-                <div class="account-card-header">
-                  <div class="account-icon-badge" style="background-color: ${acc.color || typeConfig.defaultColor}18; color: ${acc.color || typeConfig.defaultColor};">
-                    ${acc.icon || typeConfig.icon}
-                  </div>
-                  <div class="account-badge-group">
-                    <span class="badge-curr">${accCurr}</span>
-                    <span class="badge-acc-type ${badgeClass}">${typeConfig.name}</span>
-                  </div>
-                </div>
-
-                <div class="account-main-info">
-                  <h3 class="account-title" title="${acc.name}">${acc.name}</h3>
-                  <p class="account-desc">${isLiquid ? "Dana Lancar Siap Belanja" : "Instrumen Aset / Tabungan"}</p>
-                </div>
-              </div>
-
-              <div class="account-bottom-section">
-                <div class="account-balance-label">Saldo Akun</div>
-                <div class="account-balance-val tabular-nums">
-                  ${Currency.format(bal, accCurr, appState.currencies)}
-                </div>
-                ${
-                  !isBase
-                    ? `<div class="account-converted-sub tabular-nums">≈ ${Currency.format(balInBase, appState.baseCurrency, appState.currencies)} (${appState.baseCurrency})</div>`
-                    : `<div class="account-converted-sub">${isLiquid ? "💧 Aset Likuid" : "🔒 Aset Non-Likuid"}</div>`
-                }
-
-                <div class="account-actions-row">
-                  <button type="button" class="btn btn-ghost btn-sm btn-edit-account" data-id="${acc.id}">✏️ Edit</button>
-                  <button type="button" class="btn btn-ghost btn-sm btn-delete-account" data-id="${acc.id}" style="color: var(--color-slate-400);">🗑️</button>
-                </div>
-              </div>
-            `;
-          }
-
-          grid.appendChild(accCard);
-        });
-
-        body.appendChild(grid);
-      }
-
-      groupCard.appendChild(header);
-      groupCard.appendChild(body);
-      dom.accountsContainer.appendChild(groupCard);
+      frag.appendChild(sectionEl);
     });
 
-    // Tambah Event Listeners untuk tombol Edit & Hapus
-    document.querySelectorAll(".btn-edit-account").forEach(btn => {
-      btn.addEventListener("click", e => {
-        e.stopPropagation();
-        openEditAccountModal(e.currentTarget.dataset.id);
-      });
-    });
-
-    document.querySelectorAll(".btn-delete-account").forEach(btn => {
-      btn.addEventListener("click", e => {
-        e.stopPropagation();
-        deleteAccount(e.currentTarget.dataset.id);
-      });
-    });
+    dom.assetFlatGroupsList.appendChild(frag);
   }
 
-  // Render Breakdown Pengeluaran per Kategori
-  function renderCategoryBreakdown() {
-    const { categoryTotals, totalExpenseInBase } = calculateCategoryExpenses();
-
-    dom.catStackedBar.innerHTML = "";
-    dom.catPillsGrid.innerHTML = "";
-
-    const catKeys = Object.keys(categoryTotals);
-    if (totalExpenseInBase <= 0 || catKeys.length === 0) {
-      dom.catStackedBar.innerHTML = `<div style="width: 100%; height: 100%; background-color: var(--color-slate-200);"></div>`;
-      dom.catPillsGrid.innerHTML = `
-        <div style="font-size: 0.8rem; color: var(--color-slate-400); grid-column: 1 / -1;">
-          Belum ada catatan pengeluaran.
-        </div>
-      `;
+  // Event Delegation untuk Edit & Hapus Akun
+  dom.assetFlatGroupsList.addEventListener("click", e => {
+    const editBtn = e.target.closest(".btn-edit-account");
+    if (editBtn) {
+      e.stopPropagation();
+      openEditAccountModal(editBtn.dataset.id);
       return;
     }
-
-    const sortedCats = catKeys
-      .map(id => ({ id, ...categoryTotals[id] }))
-      .sort((a, b) => b.total - a.total);
-
-    sortedCats.forEach(item => {
-      const percentage = Math.max(1, Math.round((item.total / totalExpenseInBase) * 100));
-
-      const segment = document.createElement("div");
-      segment.className = "cat-bar-segment";
-      segment.style.width = `${percentage}%`;
-      segment.style.backgroundColor = item.color;
-      segment.title = `${item.name}: ${Currency.format(item.total, appState.baseCurrency, appState.currencies)} (${percentage}%)`;
-      dom.catStackedBar.appendChild(segment);
-
-      const pill = document.createElement("div");
-      pill.className = "cat-pill-item";
-      pill.innerHTML = `
-        <span class="cat-pill-dot" style="background-color: ${item.color};"></span>
-        <span>${item.icon} ${item.name}</span>
-        <span class="cat-pill-amt tabular-nums">${Currency.format(item.total, appState.baseCurrency, appState.currencies)}</span>
-      `;
-      dom.catPillsGrid.appendChild(pill);
-    });
-  }
-
-  // Render Feed Riwayat Transaksi
-  function renderTransactionsFeed() {
-    dom.txFeedContainer.innerHTML = "";
-
-    let filtered = appState.transactions;
-    if (activeTxFilter !== "all") {
-      filtered = filtered.filter(t => t.type === activeTxFilter);
+    const delBtn = e.target.closest(".btn-delete-account");
+    if (delBtn) {
+      e.stopPropagation();
+      deleteAccount(delBtn.dataset.id);
     }
+  });
 
-    const sortedTxs = [...filtered].sort((a, b) => {
-      const dateA = a.date || "";
-      const dateB = b.date || "";
-      return dateB.localeCompare(dateA);
-    });
+  // 9. RENDER HALAMAN TAB 4: LAINNYA
+  function renderTabLainnya() {
+    dom.btnModeBase.classList.toggle("active", appState.viewMode === "base");
+    dom.btnModeCurr.classList.toggle("active", appState.viewMode === "currency");
+  }
 
-    if (sortedTxs.length === 0) {
-      dom.txFeedContainer.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📝</div>
-          <div class="empty-title">Belum ada transaksi</div>
-          <div class="empty-desc">Tekan tombol '+ Catat Transaksi' untuk menambahkan mutasi pertama Anda.</div>
-        </div>
-      `;
-      return;
+  // 10. RENDER UTAMA (RENDER ALL)
+  function renderAll() {
+    const monthText = getSelectedMonthDisplay();
+    if (dom.displayCurrentMonth) dom.displayCurrentMonth.textContent = monthText;
+    if (dom.displayStatMonth) dom.displayStatMonth.textContent = monthText;
+
+    renderTabTransaksi();
+    renderTabStatistik();
+    renderTabAset();
+    renderTabLainnya();
+  }
+
+  // 11. NAVIGASI BOTTOM TAB BAR (4 TABS)
+  function switchTab(tabId) {
+    currentTab = tabId;
+
+    dom.tabBtnTransaksi.classList.toggle("active", tabId === "transaksi");
+    dom.tabBtnStatistik.classList.toggle("active", tabId === "statistik");
+    dom.tabBtnAset.classList.toggle("active", tabId === "aset");
+    dom.tabBtnLainnya.classList.toggle("active", tabId === "lainnya");
+
+    dom.headerPanelTransaksi.style.display = tabId === "transaksi" ? "flex" : "none";
+    dom.headerPanelStatistik.style.display = tabId === "statistik" ? "flex" : "none";
+    dom.headerPanelAset.style.display = tabId === "aset" ? "flex" : "none";
+    dom.headerPanelLainnya.style.display = tabId === "lainnya" ? "flex" : "none";
+
+    dom.pageTransaksi.style.display = tabId === "transaksi" ? "flex" : "none";
+    dom.pageStatistik.style.display = tabId === "statistik" ? "flex" : "none";
+    dom.pageAset.style.display = tabId === "aset" ? "flex" : "none";
+    dom.pageLainnya.style.display = tabId === "lainnya" ? "flex" : "none";
+
+    dom.fabAddTx.style.display = tabId === "transaksi" ? "flex" : "none";
+
+    if (tabId === "statistik") renderTabStatistik();
+    if (tabId === "aset") renderTabAset();
+    if (tabId === "transaksi") renderTabTransaksi();
+  }
+
+  dom.tabBtnTransaksi.addEventListener("click", () => switchTab("transaksi"));
+  dom.tabBtnStatistik.addEventListener("click", () => switchTab("statistik"));
+  dom.tabBtnAset.addEventListener("click", () => switchTab("aset"));
+  dom.tabBtnLainnya.addEventListener("click", () => switchTab("lainnya"));
+
+  // 12. NAVIGASI BULAN (SEBELUMNYA & BERIKUTNYA)
+  function changeMonth(delta) {
+    currentMonthDate.setMonth(currentMonthDate.getMonth() + delta);
+    renderAll();
+  }
+
+  dom.btnPrevMonth.addEventListener("click", () => changeMonth(-1));
+  dom.btnNextMonth.addEventListener("click", () => changeMonth(1));
+  dom.btnPrevMonthStat.addEventListener("click", () => changeMonth(-1));
+  dom.btnNextMonthStat.addEventListener("click", () => changeMonth(1));
+
+  // Switcher Tipe Statistik
+  dom.btnStatExpense.addEventListener("click", () => {
+    currentStatType = "expense";
+    dom.btnStatExpense.classList.add("active");
+    dom.btnStatIncome.classList.remove("active");
+    renderTabStatistik();
+  });
+
+  dom.btnStatIncome.addEventListener("click", () => {
+    currentStatType = "income";
+    dom.btnStatIncome.classList.add("active");
+    dom.btnStatExpense.classList.remove("active");
+    renderTabStatistik();
+  });
+
+  // Pencarian Cepat Transaksi (dengan Debounce)
+  let searchTimeout = null;
+  dom.btnToggleSearch.addEventListener("click", () => {
+    isSearchOpen = !isSearchOpen;
+    dom.searchBarWrap.style.display = isSearchOpen ? "flex" : "none";
+    if (isSearchOpen) {
+      dom.inputTxSearch.focus();
+    } else {
+      searchQuery = "";
+      dom.inputTxSearch.value = "";
+      renderTabTransaksi();
     }
-
-    sortedTxs.forEach(tx => {
-      const item = document.createElement("div");
-      item.className = "tx-item";
-
-      let icon = "💸";
-      let iconBg = "#fee2e2";
-      let iconColor = "#ef4444";
-      let title = "Pengeluaran";
-      let subtitle = "";
-      let sign = "-";
-      let amountClass = "tx-amount-expense";
-
-      const txDateStr = tx.date
-        ? new Date(tx.date + "T00:00:00").toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "short",
-            year: "numeric"
-          })
-        : "Tanpa Tanggal";
-
-      if (tx.type === "income") {
-        icon = "💰";
-        iconBg = "#dcfce7";
-        iconColor = "#10b981";
-        sign = "+";
-        amountClass = "tx-amount-income";
-
-        const cat = (appState.categories.income || []).find(c => c.id === tx.categoryId);
-        const acc = appState.accounts.find(a => a.id === tx.accountId);
-        title = cat ? `${cat.icon} ${cat.name}` : "Pemasukan";
-        subtitle = `${acc ? acc.name : "Akun"} • ${txDateStr}${tx.note ? ` • ${tx.note}` : ""}`;
-      } else if (tx.type === "transfer") {
-        icon = "🔄";
-        iconBg = "#e0f2fe";
-        iconColor = "#0284c7";
-        sign = "";
-        amountClass = "tx-amount-transfer";
-
-        const fromAcc = appState.accounts.find(a => a.id === tx.fromAccountId);
-        const toAcc = appState.accounts.find(a => a.id === tx.toAccountId);
-        title = `Transfer: ${fromAcc ? fromAcc.name : "?"} ➔ ${toAcc ? toAcc.name : "?"}`;
-        subtitle = `${txDateStr}${tx.note ? ` • ${tx.note}` : ""}`;
-      } else {
-        const cat = (appState.categories.expense || []).find(c => c.id === tx.categoryId);
-        const acc = appState.accounts.find(a => a.id === tx.accountId);
-        title = cat ? `${cat.icon} ${cat.name}` : "Pengeluaran";
-        subtitle = `${acc ? acc.name : "Akun"} • ${txDateStr}${tx.note ? ` • ${tx.note}` : ""}`;
-      }
-
-      const formattedAmt = Currency.format(tx.amount, tx.currency, appState.currencies);
-
-      item.innerHTML = `
-        <div class="tx-item-left">
-          <div class="tx-type-icon" style="background-color: ${iconBg}; color: ${iconColor};">
-            ${icon}
-          </div>
-          <div>
-            <div class="tx-item-title">${title}</div>
-            <div class="tx-item-sub">${subtitle}</div>
-          </div>
-        </div>
-
-        <div class="tx-item-right">
-          <div class="tx-amount-val ${amountClass} tabular-nums">
-            ${sign}${formattedAmt}
-          </div>
-          <button type="button" class="btn-del-tx" data-id="${tx.id}" title="Hapus Transaksi">✕</button>
-        </div>
-      `;
-
-      dom.txFeedContainer.appendChild(item);
-    });
-
-    document.querySelectorAll(".btn-del-tx").forEach(btn => {
-      btn.addEventListener("click", e => {
-        const id = e.currentTarget.dataset.id;
-        deleteTransaction(id);
-      });
-    });
-  }
-
-  // Populate Dropdown Akun Terkelompok Menggunakan <optgroup> Berdasarkan 6 Kategori
-  function populateSelectOptions() {
-    // 1. Dropdown Mata Uang Akun
-    dom.accountCurrency.innerHTML = "";
-    Object.keys(appState.currencies).forEach(code => {
-      const cur = appState.currencies[code];
-      const opt = document.createElement("option");
-      opt.value = code;
-      opt.textContent = `${cur.code} - ${cur.name} (${cur.symbol})`;
-      dom.accountCurrency.appendChild(opt);
-    });
-
-    // 2. Dropdown Mata Uang Transaksi
-    dom.txCurrency.innerHTML = "";
-    Object.keys(appState.currencies).forEach(code => {
-      const cur = appState.currencies[code];
-      const opt = document.createElement("option");
-      opt.value = code;
-      opt.textContent = `${cur.code} (${cur.symbol})`;
-      dom.txCurrency.appendChild(opt);
-    });
-
-    // 3. Dropdown Akun (Sumber & Tujuan) Terkelompok dengan <optgroup>
-    dom.txAccount.innerHTML = "";
-    dom.txAccountTo.innerHTML = "";
-
-    const orderedGroupKeys = ["cash", "bank", "ewallet", "credit", "loan", "investment"];
-
-    orderedGroupKeys.forEach(typeKey => {
-      const typeConfig = Config.ACCOUNT_TYPES[typeKey];
-      const accountsInGroup = appState.accounts.filter(a => a.type === typeKey);
-
-      if (accountsInGroup.length > 0) {
-        const optgroup1 = document.createElement("optgroup");
-        optgroup1.label = `${typeConfig.icon} ${typeConfig.name}`;
-
-        const optgroup2 = document.createElement("optgroup");
-        optgroup2.label = `${typeConfig.icon} ${typeConfig.name}`;
-
-        accountsInGroup.forEach(acc => {
-          const opt1 = document.createElement("option");
-          opt1.value = acc.id;
-          opt1.textContent = `${acc.icon || typeConfig.icon} ${acc.name} (${acc.currency || appState.baseCurrency})`;
-          optgroup1.appendChild(opt1);
-
-          const opt2 = document.createElement("option");
-          opt2.value = acc.id;
-          opt2.textContent = `${acc.icon || typeConfig.icon} ${acc.name} (${acc.currency || appState.baseCurrency})`;
-          optgroup2.appendChild(opt2);
-        });
-
-        dom.txAccount.appendChild(optgroup1);
-        dom.txAccountTo.appendChild(optgroup2);
-      }
-    });
-
-    // 4. Dropdown Kategori di Form Transaksi
-    populateCategoryDropdown();
-  }
-
-  function populateCategoryDropdown() {
-    dom.txCategory.innerHTML = "";
-    const list = activeTxModalType === "income"
-      ? (appState.categories.income || [])
-      : (appState.categories.expense || []);
-
-    list.forEach(cat => {
-      const opt = document.createElement("option");
-      opt.value = cat.id;
-      opt.textContent = `${cat.icon || "🏷️"} ${cat.name}`;
-      dom.txCategory.appendChild(opt);
-    });
-  }
-
-  // 6. Interaksi Modal & Form
-  // Switcher Filter Transaksi
-  dom.txFilterButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      dom.txFilterButtons.forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      activeTxFilter = btn.dataset.filter;
-      renderTransactionsFeed();
-    });
   });
 
-  // Switcher Mode Saldo (Utama vs Per Mata Uang)
-  dom.btnModeBase.addEventListener("click", () => {
-    appState.viewMode = "base";
-    Storage.saveData(appState);
-    renderAll();
+  dom.inputTxSearch.addEventListener("input", e => {
+    clearTimeout(searchTimeout);
+    const val = e.target.value;
+    searchTimeout = setTimeout(() => {
+      searchQuery = val;
+      renderTabTransaksi();
+    }, 200);
   });
 
-  dom.btnModeCurr.addEventListener("click", () => {
-    appState.viewMode = "currency";
-    Storage.saveData(appState);
-    renderAll();
+  dom.btnClearSearch.addEventListener("click", () => {
+    searchQuery = "";
+    dom.inputTxSearch.value = "";
+    dom.searchBarWrap.style.display = "none";
+    isSearchOpen = false;
+    renderTabTransaksi();
   });
 
-  // Modal 1: Catat Transaksi
+  // FAB Catat Transaksi
+  dom.fabAddTx.addEventListener("click", openTxModal);
+
+  // 13. MODAL 1: CATAT TRANSAKSI
   function openTxModal() {
     dom.formTx.reset();
     activeTxModalType = "expense";
@@ -1127,7 +1004,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     if (type === "transfer") {
-      dom.labelTxAccount.textContent = "Kirim dari Akun Sumber";
+      dom.labelTxAccount.textContent = "Kirim dari Akun";
       dom.groupTxAccountTo.style.display = "block";
       dom.txAccountTo.required = true;
       dom.groupTxCategory.style.display = "none";
@@ -1155,7 +1032,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const targetAccId = dom.txAccount.value;
     const targetAcc = appState.accounts.find(a => a.id === targetAccId);
 
-    // Deteksi jika transfer ke kartu kredit atau pinjaman
     if (activeTxModalType === "transfer") {
       const toAccId = dom.txAccountTo.value;
       const toAcc = appState.accounts.find(a => a.id === toAccId);
@@ -1170,31 +1046,17 @@ document.addEventListener("DOMContentLoaded", () => {
         dom.creditPaymentNotice.style.display = "none";
         dom.loanPaymentNotice.style.display = "none";
       }
-
-      const toCurr = (toAcc && toAcc.currency) || appState.baseCurrency;
-      if (toAcc && (txCurr !== toCurr || txCurr !== (targetAcc && targetAcc.currency))) {
-        const amtInTarget = Currency.convert(amt, txCurr, toCurr, appState.currencies);
-        dom.txConversionText.innerHTML = `Transfer: <strong>${Currency.format(amt, txCurr, appState.currencies)}</strong> akan masuk senilai <strong>${Currency.format(amtInTarget, toCurr, appState.currencies)}</strong> ke akun tujuan.`;
-        dom.txConversionPreview.style.display = "flex";
-      } else {
-        dom.txConversionPreview.style.display = "none";
-      }
     } else {
       dom.creditPaymentNotice.style.display = "none";
       dom.loanPaymentNotice.style.display = "none";
+    }
 
-      if (!targetAcc || amt <= 0) {
-        dom.txConversionPreview.style.display = "none";
-        return;
-      }
-      const accCurr = targetAcc.currency || appState.baseCurrency;
-      if (txCurr !== accCurr) {
-        const amtInAcc = Currency.convert(amt, txCurr, accCurr, appState.currencies);
-        dom.txConversionText.innerHTML = `Valuta berbeda: <strong>${Currency.format(amt, txCurr, appState.currencies)}</strong> setara dengan <strong>${Currency.format(amtInAcc, accCurr, appState.currencies)}</strong> di akun ini.`;
-        dom.txConversionPreview.style.display = "flex";
-      } else {
-        dom.txConversionPreview.style.display = "none";
-      }
+    if (amt > 0 && targetAcc && targetAcc.currency !== txCurr) {
+      const converted = Currency.convert(amt, txCurr, targetAcc.currency, appState.currencies);
+      dom.txConversionPreview.style.display = "flex";
+      dom.txConversionText.textContent = `Konversi: ${Currency.format(amt, txCurr, appState.currencies)} ≈ ${Currency.format(converted, targetAcc.currency, appState.currencies)} pada akun tujuan.`;
+    } else {
+      dom.txConversionPreview.style.display = "none";
     }
   }
 
@@ -1203,144 +1065,170 @@ document.addEventListener("DOMContentLoaded", () => {
   dom.txAccount.addEventListener("change", updateLiveConversionPreview);
   dom.txAccountTo.addEventListener("change", updateLiveConversionPreview);
 
-  dom.btnOpenTx.addEventListener("click", openTxModal);
+  function populateAccountDropdowns() {
+    dom.txAccount.innerHTML = "";
+    dom.txAccountTo.innerHTML = "";
+
+    const groupNames = {
+      cash: "Uang Tunai / Cash",
+      bank: "Rekening Bank",
+      ewallet: "E-Wallet",
+      credit: "Kartu Kredit",
+      loan: "Pinjaman",
+      investment: "Investasi / Aset"
+    };
+
+    const grouped = {};
+    appState.accounts.forEach(acc => {
+      const t = acc.type || "bank";
+      if (!grouped[t]) grouped[t] = [];
+      grouped[t].push(acc);
+    });
+
+    Object.keys(groupNames).forEach(typeKey => {
+      if (!grouped[typeKey] || grouped[typeKey].length === 0) return;
+
+      const optGroupFrom = document.createElement("optgroup");
+      optGroupFrom.label = groupNames[typeKey];
+
+      const optGroupTo = document.createElement("optgroup");
+      optGroupTo.label = groupNames[typeKey];
+
+      grouped[typeKey].forEach(acc => {
+        const optFrom = document.createElement("option");
+        optFrom.value = acc.id;
+        optFrom.textContent = `${acc.icon || "🏦"} ${acc.name} (${acc.currency})`;
+        optGroupFrom.appendChild(optFrom);
+
+        const optTo = document.createElement("option");
+        optTo.value = acc.id;
+        optTo.textContent = `${acc.icon || "🏦"} ${acc.name} (${acc.currency})`;
+        optGroupTo.appendChild(optTo);
+      });
+
+      dom.txAccount.appendChild(optGroupFrom);
+      dom.txAccountTo.appendChild(optGroupTo);
+    });
+
+    if (dom.txAccountTo.options.length > 1) {
+      dom.txAccountTo.selectedIndex = 1;
+    }
+  }
+
+  function populateCategoryDropdown() {
+    dom.txCategory.innerHTML = "";
+    const filterType = activeTxModalType === "income" ? "income" : "expense";
+    const available = appState.categories.filter(c => c.type === filterType);
+
+    available.forEach(cat => {
+      const opt = document.createElement("option");
+      opt.value = cat.id;
+      opt.textContent = `${cat.icon || "🏷️"} ${cat.name}`;
+      dom.txCategory.appendChild(opt);
+    });
+  }
+
+  function populateCurrencyDropdowns() {
+    dom.txCurrency.innerHTML = "";
+    dom.accountCurrency.innerHTML = "";
+
+    Object.keys(appState.currencies).forEach(code => {
+      const c = appState.currencies[code];
+      const opt1 = document.createElement("option");
+      opt1.value = code;
+      opt1.textContent = `${code} - ${c.name} (${c.symbol})`;
+      dom.txCurrency.appendChild(opt1);
+
+      const opt2 = document.createElement("option");
+      opt2.value = code;
+      opt2.textContent = `${code} - ${c.name} (${c.symbol})`;
+      dom.accountCurrency.appendChild(opt2);
+    });
+  }
+
   dom.btnCloseTx.addEventListener("click", closeTxModal);
   dom.btnCancelTx.addEventListener("click", closeTxModal);
 
   dom.formTx.addEventListener("submit", e => {
     e.preventDefault();
 
-    const amount = parseFloat(dom.txAmount.value);
-    const currency = dom.txCurrency.value;
-    const date = dom.txDate.value;
-    const note = dom.txNote.value.trim();
+    const amt = parseFloat(dom.txAmount.value);
+    const curr = dom.txCurrency.value;
+    const accId = dom.txAccount.value;
+    const accToId = dom.txAccountTo.value;
+    const catId = dom.txCategory.value;
+    const dateVal = dom.txDate.value;
+    const noteVal = dom.txNote.value.trim();
 
-    if (!amount || amount <= 0) {
+    if (!amt || amt <= 0) {
       alert("Masukkan nominal transaksi yang valid!");
+      return;
+    }
+
+    if (activeTxModalType === "transfer" && accId === accToId) {
+      alert("Akun sumber dan akun tujuan tidak boleh sama!");
       return;
     }
 
     const newTx = {
       id: "tx-" + Date.now(),
       type: activeTxModalType,
-      amount: amount,
-      currency: currency,
-      date: date,
-      note: note
+      amount: amt,
+      currency: curr,
+      account: accId,
+      date: dateVal || new Date().toISOString().slice(0, 10),
+      note: noteVal
     };
 
     if (activeTxModalType === "transfer") {
-      const fromId = dom.txAccount.value;
-      const toId = dom.txAccountTo.value;
-      if (fromId === toId) {
-        alert("Akun asal dan akun tujuan transfer tidak boleh sama!");
-        return;
-      }
-      newTx.fromAccountId = fromId;
-      newTx.toAccountId = toId;
+      newTx.accountTo = accToId;
     } else {
-      newTx.accountId = dom.txAccount.value;
-      newTx.categoryId = dom.txCategory.value;
+      newTx.category = catId;
     }
 
-    appState.transactions.push(newTx);
+    appState.transactions.unshift(newTx);
     Storage.saveData(appState);
+
     closeTxModal();
     renderAll();
   });
 
-  function deleteTransaction(id) {
-    if (confirm("Hapus catatan transaksi ini?")) {
-      appState.transactions = appState.transactions.filter(t => t.id !== id);
-      Storage.saveData(appState);
-      renderAll();
-    }
+  function deleteTransaction(txId) {
+    if (!confirm("Hapus transaksi ini?")) return;
+    appState.transactions = appState.transactions.filter(t => t.id !== txId);
+    Storage.saveData(appState);
+    renderAll();
   }
 
-  // Modal 2: Akun Keuangan (Tambah / Edit)
-  function handleAccountTypeChange() {
-    const type = dom.accountType.value;
-    const typeConfig = Config.ACCOUNT_TYPES[type] || Config.ACCOUNT_TYPES.bank;
-
-    if (type === "credit") {
-      dom.fieldCreditLimit.style.display = "block";
-      dom.fieldCreditInitialDebt.style.display = "block";
-      dom.fieldCreditDates.style.display = "grid";
-      dom.fieldLoanInitial.style.display = "none";
-      dom.fieldInitialBalance.style.display = "none";
-      dom.accountTypeHint.innerHTML = "Credit Card dicatat sebagai liabilitas dengan limit kredit, siklus penagihan, dan tanggal jatuh tempo.";
-      dom.accountColor.value = "#f43f5e";
-      dom.accountIcon.value = "💳";
-    } else if (type === "loan") {
-      dom.fieldCreditLimit.style.display = "none";
-      dom.fieldCreditInitialDebt.style.display = "none";
-      dom.fieldCreditDates.style.display = "none";
-      dom.fieldLoanInitial.style.display = "block";
-      dom.fieldInitialBalance.style.display = "none";
-      dom.accountTypeHint.innerHTML = "Pinjaman dicatat sebagai liabilitas dengan sisa pokok yang berkurang saat menerima pembayaran transfer.";
-      dom.accountColor.value = "#d97706";
-      dom.accountIcon.value = "🤝";
-    } else if (type === "investment") {
-      dom.fieldCreditLimit.style.display = "none";
-      dom.fieldCreditInitialDebt.style.display = "none";
-      dom.fieldCreditDates.style.display = "none";
-      dom.fieldLoanInitial.style.display = "none";
-      dom.fieldInitialBalance.style.display = "block";
-      dom.accountTypeHint.innerHTML = "Investasi dihitung dalam Kekayaan Bersih (Net Worth), tetapi tidak dimasukkan dalam Uang Siap Pakai.";
-      dom.accountColor.value = "#8b5cf6";
-      dom.accountIcon.value = "📈";
-    } else {
-      // cash, bank, ewallet
-      dom.fieldCreditLimit.style.display = "none";
-      dom.fieldCreditInitialDebt.style.display = "none";
-      dom.fieldCreditDates.style.display = "none";
-      dom.fieldLoanInitial.style.display = "none";
-      dom.fieldInitialBalance.style.display = "block";
-      dom.accountTypeHint.innerHTML = "Akun Cash, Bank, dan E-Wallet otomatis dihitung sebagai <strong>Sisa Uang Siap Pakai</strong>.";
-      dom.accountColor.value = typeConfig.defaultColor;
-      dom.accountIcon.value = typeConfig.icon;
-    }
-  }
-
-  dom.accountType.addEventListener("change", handleAccountTypeChange);
-
-  function openAddAccountModal(preselectedType = "bank") {
+  // 14. MODAL 2: TAMBAH / EDIT AKUN
+  function openAddAccountModal() {
     dom.formAccount.reset();
     dom.accountEditId.value = "";
     dom.modalAccountTitle.textContent = "Tambah Akun Keuangan";
-
-    if (Config.ACCOUNT_TYPES[preselectedType]) {
-      dom.accountType.value = preselectedType;
-    } else {
-      dom.accountType.value = "bank";
-    }
-
+    dom.accountType.value = "bank";
+    updateAccountModalFields("bank");
     dom.accountCurrency.value = appState.baseCurrency;
-    dom.accountStatementDay.value = "15";
-    dom.accountDueDay.value = "5";
-    handleAccountTypeChange();
     dom.modalAccount.classList.add("open");
   }
 
-  function openEditAccountModal(id) {
-    const acc = appState.accounts.find(a => a.id === id);
+  function openEditAccountModal(accId) {
+    const acc = appState.accounts.find(a => a.id === accId);
     if (!acc) return;
 
     dom.accountEditId.value = acc.id;
     dom.modalAccountTitle.textContent = "Edit Akun Keuangan";
-    dom.accountType.value = acc.type || "bank";
+    dom.accountType.value = acc.type;
+    updateAccountModalFields(acc.type);
     dom.accountName.value = acc.name;
     dom.accountIcon.value = acc.icon || "🏦";
     dom.accountColor.value = acc.color || "#059669";
     dom.accountCurrency.value = acc.currency || appState.baseCurrency;
 
-    handleAccountTypeChange();
-
     if (acc.type === "credit") {
-      dom.accountCreditLimit.value = acc.creditLimit || 0;
+      dom.accountCreditLimit.value = acc.creditLimit || "";
       dom.accountInitialDebt.value = acc.initialBalance || 0;
-      dom.accountStatementDay.value = acc.statementDay !== undefined ? acc.statementDay : 15;
-      dom.accountDueDay.value = acc.dueDay !== undefined ? acc.dueDay : 5;
+      dom.accountStatementDay.value = acc.statementDay || 15;
+      dom.accountDueDay.value = acc.dueDay || 5;
     } else if (acc.type === "loan") {
       dom.accountInitialLoan.value = acc.initialBalance || 0;
     } else {
@@ -1354,7 +1242,44 @@ document.addEventListener("DOMContentLoaded", () => {
     dom.modalAccount.classList.remove("open");
   }
 
-  dom.btnQuickAddAccount.addEventListener("click", () => openAddAccountModal("bank"));
+  function updateAccountModalFields(type) {
+    if (type === "credit") {
+      dom.fieldInitialBalance.style.display = "none";
+      dom.fieldCreditLimit.style.display = "block";
+      dom.fieldLoanInitial.style.display = "none";
+      dom.fieldCreditInitialDebt.style.display = "block";
+      dom.fieldCreditDates.style.display = "grid";
+      dom.accountTypeHint.innerHTML = "Akun Kartu Kredit diperlakukan sebagai <strong>Kewajiban</strong>. Memiliki limit kredit, siklus penagihan, dan tanggal jatuh tempo.";
+    } else if (type === "loan") {
+      dom.fieldInitialBalance.style.display = "none";
+      dom.fieldCreditLimit.style.display = "none";
+      dom.fieldLoanInitial.style.display = "block";
+      dom.fieldCreditInitialDebt.style.display = "none";
+      dom.fieldCreditDates.style.display = "none";
+      dom.accountTypeHint.innerHTML = "Akun Pinjaman mencatat sisa pokok utang (KTA/KPR/Cicilan). Saldo utang otomatis berkurang saat menerima Transfer.";
+    } else if (type === "investment") {
+      dom.fieldInitialBalance.style.display = "block";
+      dom.fieldCreditLimit.style.display = "none";
+      dom.fieldLoanInitial.style.display = "none";
+      dom.fieldCreditInitialDebt.style.display = "none";
+      dom.fieldCreditDates.style.display = "none";
+      dom.accountTypeHint.innerHTML = "Akun Investasi/Aset dihitung ke dalam Net Worth, tetapi terpisah dari dana siap belanja harian.";
+    } else {
+      dom.fieldInitialBalance.style.display = "block";
+      dom.fieldCreditLimit.style.display = "none";
+      dom.fieldLoanInitial.style.display = "none";
+      dom.fieldCreditInitialDebt.style.display = "none";
+      dom.fieldCreditDates.style.display = "none";
+      dom.accountTypeHint.innerHTML = "Akun Cash, Bank, dan E-Wallet otomatis dihitung sebagai <strong>Aset Likuid</strong>.";
+    }
+  }
+
+  dom.accountType.addEventListener("change", e => {
+    updateAccountModalFields(e.target.value);
+  });
+
+  dom.btnOpenAccountTab3.addEventListener("click", openAddAccountModal);
+  dom.menuBtnAddAccount.addEventListener("click", openAddAccountModal);
   dom.btnCloseAccount.addEventListener("click", closeAccountModal);
   dom.btnCancelAccount.addEventListener("click", closeAccountModal);
 
@@ -1419,72 +1344,46 @@ document.addEventListener("DOMContentLoaded", () => {
         currency: currency,
         initialBalance: initBal
       };
+
       if (type === "credit") {
         newAcc.creditLimit = limit;
         newAcc.statementDay = statementDay;
         newAcc.dueDay = dueDay;
       }
+
       appState.accounts.push(newAcc);
     }
 
     Storage.saveData(appState);
     closeAccountModal();
+    populateAccountDropdowns();
     renderAll();
   });
 
-  function deleteAccount(id) {
+  function deleteAccount(accId) {
     if (appState.accounts.length <= 1) {
-      alert("Anda harus memiliki minimal 1 akun keuangan!");
+      alert("Aplikasi harus memiliki setidaknya satu akun!");
       return;
     }
 
-    if (confirm("Hapus akun ini? Transaksi yang terhubung ke akun ini akan tetap ada dalam riwayat.")) {
-      appState.accounts = appState.accounts.filter(a => a.id !== id);
-      Storage.saveData(appState);
-      renderAll();
+    const hasTx = appState.transactions.some(t => t.account === accId || t.accountTo === accId);
+    if (hasTx) {
+      if (!confirm("Akun ini memiliki riwayat transaksi. Jika dihapus, transaksi terkait mungkin tidak menampilkan akun dengan benar. Lanjutkan?")) {
+        return;
+      }
+    } else {
+      if (!confirm("Hapus akun ini?")) return;
     }
+
+    appState.accounts = appState.accounts.filter(a => a.id !== accId);
+    Storage.saveData(appState);
+    populateAccountDropdowns();
+    renderAll();
   }
 
-  // Modal 3: Kelola Kategori
-  function renderCategoriesModalLists() {
-    dom.listCategoriesExpense.innerHTML = "";
-    dom.listCategoriesIncome.innerHTML = "";
-
-    (appState.categories.expense || []).forEach(cat => {
-      const tag = document.createElement("span");
-      tag.className = "cat-pill-item";
-      tag.style.padding = "0.4rem 0.75rem";
-      tag.innerHTML = `
-        <span class="cat-pill-dot" style="background-color: ${cat.color};"></span>
-        <span>${cat.icon} ${cat.name}</span>
-        <button type="button" class="btn-del-cat" data-type="expense" data-id="${cat.id}" style="border:none;background:none;cursor:pointer;color:var(--color-slate-400);margin-left:0.35rem;">✕</button>
-      `;
-      dom.listCategoriesExpense.appendChild(tag);
-    });
-
-    (appState.categories.income || []).forEach(cat => {
-      const tag = document.createElement("span");
-      tag.className = "cat-pill-item";
-      tag.style.padding = "0.4rem 0.75rem";
-      tag.innerHTML = `
-        <span class="cat-pill-dot" style="background-color: ${cat.color};"></span>
-        <span>${cat.icon} ${cat.name}</span>
-        <button type="button" class="btn-del-cat" data-type="income" data-id="${cat.id}" style="border:none;background:none;cursor:pointer;color:var(--color-slate-400);margin-left:0.35rem;">✕</button>
-      `;
-      dom.listCategoriesIncome.appendChild(tag);
-    });
-
-    document.querySelectorAll(".btn-del-cat").forEach(btn => {
-      btn.addEventListener("click", e => {
-        const catId = e.currentTarget.dataset.id;
-        const catType = e.currentTarget.dataset.type;
-        deleteCategory(catType, catId);
-      });
-    });
-  }
-
+  // 15. MODAL 3: KELOLA KATEGORI
   function openCategoriesModal() {
-    renderCategoriesModalLists();
+    renderCategoryModalList();
     dom.modalCategories.classList.add("open");
   }
 
@@ -1492,13 +1391,47 @@ document.addEventListener("DOMContentLoaded", () => {
     dom.modalCategories.classList.remove("open");
   }
 
-  dom.btnOpenCategories.addEventListener("click", openCategoriesModal);
-  if (dom.btnManageCatLink) dom.btnManageCatLink.addEventListener("click", openCategoriesModal);
+  function renderCategoryModalList() {
+    dom.listCategoriesExpense.innerHTML = "";
+    dom.listCategoriesIncome.innerHTML = "";
+
+    appState.categories.forEach(cat => {
+      const pill = document.createElement("div");
+      pill.style.cssText = `
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        padding: 0.35rem 0.65rem; border-radius: var(--radius-full);
+        font-size: 0.8rem; font-weight: 700; background-color: var(--color-gray-100);
+        border: 1px solid var(--color-gray-200);
+      `;
+      pill.innerHTML = `
+        <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${escapeHTML(cat.color)};"></span>
+        <span>${escapeHTML(cat.icon)} ${escapeHTML(cat.name)}</span>
+        <button type="button" data-id="${escapeHTML(cat.id)}" class="btn-del-cat" style="background: none; border: none; cursor: pointer; color: var(--color-gray-400); font-size: 0.9rem; line-height: 1;">×</button>
+      `;
+
+      if (cat.type === "expense") {
+        dom.listCategoriesExpense.appendChild(pill);
+      } else {
+        dom.listCategoriesIncome.appendChild(pill);
+      }
+    });
+  }
+
+  // Event Delegation untuk Hapus Kategori
+  dom.modalCategories.addEventListener("click", e => {
+    const delBtn = e.target.closest(".btn-del-cat");
+    if (delBtn) {
+      deleteCategory(delBtn.dataset.id);
+    }
+  });
+
+  dom.menuBtnCategories.addEventListener("click", openCategoriesModal);
   dom.btnCloseCategories.addEventListener("click", closeCategoriesModal);
   dom.btnDoneCategories.addEventListener("click", closeCategoriesModal);
 
   dom.formAddCategory.addEventListener("submit", e => {
     e.preventDefault();
+
     const type = dom.newCatType.value;
     const icon = dom.newCatIcon.value.trim() || "🏷️";
     const name = dom.newCatName.value.trim();
@@ -1509,85 +1442,42 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (!appState.categories[type]) {
-      appState.categories[type] = [];
-    }
-
-    appState.categories[type].push({
+    const newCat = {
       id: "cat-" + Date.now(),
+      type: type,
       name: name,
       icon: icon,
       color: color
-    });
+    };
 
+    appState.categories.push(newCat);
     Storage.saveData(appState);
+
     dom.formAddCategory.reset();
-    renderCategoriesModalLists();
+    dom.newCatIcon.value = "🏷️";
+    dom.newCatColor.value = "#10b981";
+
+    renderCategoryModalList();
+    populateCategoryDropdown();
     renderAll();
   });
 
-  function deleteCategory(type, id) {
-    if ((appState.categories[type] || []).length <= 1) {
-      alert("Minimal harus ada 1 kategori!");
+  function deleteCategory(catId) {
+    if (appState.categories.length <= 1) {
+      alert("Aplikasi harus memiliki setidaknya satu kategori!");
       return;
     }
-    appState.categories[type] = appState.categories[type].filter(c => c.id !== id);
+
+    if (!confirm("Hapus kategori ini?")) return;
+
+    appState.categories = appState.categories.filter(c => c.id !== catId);
     Storage.saveData(appState);
-    renderCategoriesModalLists();
+    renderCategoryModalList();
+    populateCategoryDropdown();
     renderAll();
   }
 
-  // Modal 4: Kurs & Valuta
-  function renderRatesModalList() {
-    dom.ratesModalList.innerHTML = "";
-    const baseCode = appState.baseCurrency;
-
-    Object.keys(appState.currencies).forEach(code => {
-      const cur = appState.currencies[code];
-      const isBase = code === baseCode;
-
-      const row = document.createElement("div");
-      row.className = "rate-row-card";
-      row.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <span class="rate-badge-code">${code}</span>
-          <div>
-            <strong style="font-size: 0.875rem;">${cur.name}</strong> (${cur.symbol})
-            <div style="font-size: 0.75rem; color: var(--color-slate-400);">
-              ${isBase ? "⭐ Mata Uang Utama Aplikasi" : `1 ${code} = kurs terhadap ${baseCode}`}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          ${
-            isBase
-              ? `<span style="font-weight: 700; color: var(--color-brand-600); font-size: 0.85rem;">1 (Utama)</span>`
-              : `<div style="display: flex; align-items: center; gap: 0.4rem;">
-                   <span style="font-size: 0.8rem; color: var(--color-slate-500);">1 ${code} =</span>
-                   <input type="number" step="any" min="0" value="${cur.rate}" data-code="${code}" class="rate-input-field input-live-rate tabular-nums">
-                   <span style="font-size: 0.8rem; font-weight: 600;">${baseCode}</span>
-                 </div>`
-          }
-        </div>
-      `;
-
-      dom.ratesModalList.appendChild(row);
-    });
-
-    document.querySelectorAll(".input-live-rate").forEach(input => {
-      input.addEventListener("change", e => {
-        const code = e.target.dataset.code;
-        const newRate = parseFloat(e.target.value);
-        if (newRate > 0 && appState.currencies[code]) {
-          appState.currencies[code].rate = newRate;
-          Storage.saveData(appState);
-          renderAll();
-        }
-      });
-    });
-  }
-
+  // 16. MODAL 4: PENGATURAN KURS MANUAL
   function openRatesModal() {
     renderRatesModalList();
     dom.modalRates.classList.add("open");
@@ -1597,7 +1487,50 @@ document.addEventListener("DOMContentLoaded", () => {
     dom.modalRates.classList.remove("open");
   }
 
-  dom.btnOpenRates.addEventListener("click", openRatesModal);
+  function renderRatesModalList() {
+    dom.ratesModalList.innerHTML = "";
+    dom.ratesModalBaseCode.textContent = appState.baseCurrency;
+
+    Object.keys(appState.currencies).forEach(code => {
+      const cur = appState.currencies[code];
+      const isBase = code === appState.baseCurrency;
+
+      const row = document.createElement("div");
+      row.className = "rate-row-card";
+      row.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="rate-badge-code">${escapeHTML(cur.code)}</span>
+          <div>
+            <div style="font-weight: 700; font-size: 0.85rem;">${escapeHTML(cur.name)} (${escapeHTML(cur.symbol)})</div>
+            <div style="font-size: 0.725rem; color: var(--color-gray-500);">${isBase ? "Mata Uang Utama" : `1 ${escapeHTML(cur.code)} =`}</div>
+          </div>
+        </div>
+        <div>
+          ${
+            isBase
+              ? `<span style="font-size: 0.85rem; font-weight: 800; color: var(--color-brand-600);">1.00 (Dasar)</span>`
+              : `<input type="number" class="rate-input-field tabular-nums" data-code="${escapeHTML(cur.code)}" value="${escapeHTML(cur.rate)}" step="any" min="0">`
+          }
+        </div>
+      `;
+      dom.ratesModalList.appendChild(row);
+    });
+  }
+
+  // Event Delegation untuk Input Kurs
+  dom.ratesModalList.addEventListener("change", e => {
+    if (e.target.classList.contains("rate-input-field")) {
+      const code = e.target.dataset.code;
+      const val = parseFloat(e.target.value);
+      if (val && val > 0 && appState.currencies[code]) {
+        appState.currencies[code].rate = val;
+        Storage.saveData(appState);
+        renderAll();
+      }
+    }
+  });
+
+  dom.menuBtnRates.addEventListener("click", openRatesModal);
   dom.btnCloseRates.addEventListener("click", closeRatesModal);
   dom.btnDoneRates.addEventListener("click", closeRatesModal);
 
@@ -1615,7 +1548,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (appState.currencies[code]) {
-      alert(`Mata uang ${code} sudah ada dalam daftar.`);
+      alert(`Mata uang ${code} sudah ada.`);
       return;
     }
 
@@ -1630,11 +1563,12 @@ document.addEventListener("DOMContentLoaded", () => {
     Storage.saveData(appState);
     dom.formAddCurrency.reset();
     renderRatesModalList();
+    populateCurrencyDropdowns();
     renderAll();
     alert(`Mata uang ${code} berhasil ditambahkan!`);
   });
 
-  // Modal 5: Backup & Restore
+  // 17. MODAL 5: CADANGAN & PEMULIHAN (BACKUP/RESTORE)
   function openBackupModal() {
     dom.importStatusMsg.textContent = "";
     dom.modalBackup.classList.add("open");
@@ -1644,7 +1578,11 @@ document.addEventListener("DOMContentLoaded", () => {
     dom.modalBackup.classList.remove("open");
   }
 
-  dom.btnOpenBackup.addEventListener("click", openBackupModal);
+  dom.menuBtnBackupExport.addEventListener("click", () => {
+    Storage.exportBackup(appState);
+  });
+
+  dom.menuBtnBackupImport.addEventListener("click", openBackupModal);
   dom.btnCloseBackup.addEventListener("click", closeBackupModal);
   dom.btnDoneBackup.addEventListener("click", closeBackupModal);
 
@@ -1652,89 +1590,104 @@ document.addEventListener("DOMContentLoaded", () => {
     Storage.exportBackup(appState);
   });
 
+  if (dom.btnExportBin) {
+    dom.btnExportBin.addEventListener("click", () => {
+      Storage.exportSqliteBackup(appState);
+    });
+  }
+
   dom.btnImportJson.addEventListener("click", () => {
     const file = dom.inputImportFile.files[0];
     if (!file) {
-      alert("Pilih file backup .json terlebih dahulu!");
+      alert("Pilih file cadangan (.bin atau .json) terlebih dahulu!");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const result = Storage.importBackup(e.target.result);
+    const fileName = file.name.toLowerCase();
+    const isSqliteFile = fileName.endsWith(".bin") || fileName.endsWith(".db") || fileName.endsWith(".sqlite");
+
+    dom.importStatusMsg.style.color = "var(--color-gray-500)";
+    dom.importStatusMsg.textContent = "⏳ Memproses file cadangan...";
+
+    const applyImportedState = result => {
       if (result.success) {
         appState = result.data;
         dom.importStatusMsg.style.color = "var(--color-brand-600)";
         dom.importStatusMsg.textContent = "✅ " + result.message;
+
+        // Otomatis arahkan bulan tampilan ke tanggal transaksi terbaru
+        if (appState.transactions && appState.transactions.length > 0 && appState.transactions[0].date) {
+          const latestDate = new Date(appState.transactions[0].date + "T00:00:00");
+          if (!isNaN(latestDate.getTime())) {
+            currentMonthDate = latestDate;
+          }
+        }
+
+        populateAccountDropdowns();
+        populateCategoryDropdown();
+        populateCurrencyDropdowns();
         renderAll();
       } else {
-        dom.importStatusMsg.style.color = "var(--color-expense-text)";
+        dom.importStatusMsg.style.color = "var(--color-expense)";
         dom.importStatusMsg.textContent = "❌ " + result.message;
       }
     };
-    reader.readAsText(file);
+
+    const reader = new FileReader();
+    if (isSqliteFile) {
+      reader.onload = async function(e) {
+        const result = await Storage.importSqliteBackup(e.target.result);
+        applyImportedState(result);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = function(e) {
+        const result = Storage.importBackup(e.target.result);
+        applyImportedState(result);
+      };
+      reader.readAsText(file);
+    }
   });
 
-  dom.btnResetData.addEventListener("click", () => {
+  function resetAllData() {
     if (confirm("PERINGATAN: Semua data akun, kategori, dan transaksi akan dihapus dan dikembalikan ke awal. Lanjutkan?")) {
       appState = Storage.resetToDefault();
+      populateAccountDropdowns();
+      populateCategoryDropdown();
+      populateCurrencyDropdowns();
       renderAll();
       closeBackupModal();
       alert("Aplikasi berhasil direset ke pengaturan awal!");
     }
+  }
+
+  dom.menuBtnResetData.addEventListener("click", resetAllData);
+  dom.btnResetData.addEventListener("click", resetAllData);
+
+  // Switcher Tampilan Saldo di Tab Lainnya (IDR Utama vs Per Mata Uang)
+  dom.btnModeBase.addEventListener("click", () => {
+    appState.viewMode = "base";
+    Storage.saveData(appState);
+    renderAll();
   });
 
-  // Modal Menu Mobile (Bottom Sheet) & FAB
-  function openMobileMenuModal() {
-    if (dom.modalMobileMenu) dom.modalMobileMenu.classList.add("open");
-  }
+  dom.btnModeCurr.addEventListener("click", () => {
+    appState.viewMode = "currency";
+    Storage.saveData(appState);
+    renderAll();
+  });
 
-  function closeMobileMenuModal() {
-    if (dom.modalMobileMenu) dom.modalMobileMenu.classList.remove("open");
-  }
-
-  if (dom.btnMobileMenu) {
-    dom.btnMobileMenu.addEventListener("click", openMobileMenuModal);
-  }
-  if (dom.btnCloseMobileMenu) {
-    dom.btnCloseMobileMenu.addEventListener("click", closeMobileMenuModal);
-  }
-  if (dom.btnDoneMobileMenu) {
-    dom.btnDoneMobileMenu.addEventListener("click", closeMobileMenuModal);
-  }
-
-  if (dom.mobileMenuBtnRates) {
-    dom.mobileMenuBtnRates.addEventListener("click", () => {
-      closeMobileMenuModal();
-      openRatesModal();
-    });
-  }
-
-  if (dom.mobileMenuBtnCategories) {
-    dom.mobileMenuBtnCategories.addEventListener("click", () => {
-      closeMobileMenuModal();
-      openCategoriesModal();
-    });
-  }
-
-  if (dom.mobileMenuBtnBackup) {
-    dom.mobileMenuBtnBackup.addEventListener("click", () => {
-      closeMobileMenuModal();
-      openBackupModal();
-    });
-  }
-
-  // Floating Action Button (FAB) Mobile
-  if (dom.fabOpenTx) {
-    dom.fabOpenTx.addEventListener("click", openTxModal);
-  }
-
+  // Tutup modal jika area backdrop diklik
   window.addEventListener("click", e => {
     if (e.target.classList.contains("modal-backdrop")) {
       e.target.classList.remove("open");
     }
   });
 
-  // Inisialisasi Pertama Kali
+  // 18. INISIALISASI PERTAMA KALI
+  populateAccountDropdowns();
+  populateCategoryDropdown();
+  populateCurrencyDropdowns();
+  switchTab("transaksi");
   renderAll();
 });

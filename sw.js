@@ -3,7 +3,7 @@
  * Mengelola caching offline dengan strategi Cache-First dan fallback Network.
  */
 
-const CACHE_NAME = "sisauang-pwa-v2";
+const CACHE_NAME = "sisauang-pwa-v3";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -34,6 +34,7 @@ self.addEventListener("activate", event => {
       return Promise.all(
         cacheNames.map(cache => {
           if (cache !== CACHE_NAME) {
+            console.log("Menghapus cache Service Worker lama:", cache);
             return caches.delete(cache);
           }
         })
@@ -42,26 +43,20 @@ self.addEventListener("activate", event => {
   );
 });
 
-// Event Fetch: Strategi Cache-First dengan Network Fallback
+// Event Fetch: Strategi Cache-First dengan fallback ke Network
 self.addEventListener("fetch", event => {
-  // Hanya tangani request GET (abaikan non-GET)
+  // Hanya proses permintaan method GET
   if (event.request.method !== "GET") return;
 
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
-      // 1. Jika aset ada di cache, gunakan langsung (cepat & 100% offline)
       if (cachedResponse) {
         return cachedResponse;
       }
 
-      // 2. Jika tidak ada di cache, ambil dari network
       return fetch(event.request).then(networkResponse => {
-        // Simpan salinan ke cache jika respons valid dan berasal dari origin yang sama
-        if (
-          networkResponse &&
-          networkResponse.status === 200 &&
-          event.request.url.startsWith(self.location.origin)
-        ) {
+        // Simpan salinan respons jaringan valid ke cache untuk penggunaan offline berikutnya
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => {
             cache.put(event.request, responseToCache);
@@ -69,8 +64,8 @@ self.addEventListener("fetch", event => {
         }
         return networkResponse;
       }).catch(() => {
-        // Fallback saat offline jika halaman utama diminta
-        if (event.request.headers.get("accept")?.includes("text/html")) {
+        // Fallback jika offline dan membuka halaman utama
+        if (event.request.mode === "navigate") {
           return caches.match("./index.html");
         }
       });

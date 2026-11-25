@@ -1,18 +1,22 @@
 /* ==========================================================================
-   SisaUang - Modern Account-Based & Category-Based Fintech Stylesheet
-   Terinspirasi oleh Bento Grid, Wise, dan Notion
+   SisaUang - Modern Mobile Clean Finance UI (Inspired by Money Manager Realbyte)
+   - Emerald Green Header (#059669), Light Gray Background (#F3F4F6)
+   - Clean White Flat List Rows with Thin Borders (1px solid #E5E7EB)
+   - 4 Fixed Bottom Navigation Tabs (Transaksi, Statistik, Aset, Lainnya)
+   - Grouped Date Transactions with Big Date, Day Badge & Daily In/Out
+   - Canvas Donut Chart & Category Ranking List
+   - 6 Account Groups Flat List & Credit Card Cycle Badges
+   - Desktop 540px Centered Mobile Frame / 100% Native on Mobile
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
-
 :root {
-  /* Palet Warna Primer & Semantik */
   --color-brand-50: #ecfdf5;
   --color-brand-100: #d1fae5;
+  --color-brand-200: #a7f3d0;
   --color-brand-500: #10b981;
   --color-brand-600: #059669;
   --color-brand-700: #047857;
-  --color-brand-900: #064e3b;
+  --color-brand-800: #065f46;
 
   --color-slate-50: #f8fafc;
   --color-slate-100: #f1f5f9;
@@ -25,1251 +29,1056 @@
   --color-slate-800: #1e293b;
   --color-slate-900: #0f172a;
 
-  --color-expense-bg: #fff1f2;
-  --color-expense-text: #e11d48;
-  --color-expense-border: #fecdd3;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
 
+  --color-income: #10b981;
+  --color-income-dark: #059669;
   --color-income-bg: #ecfdf5;
-  --color-income-text: #059669;
-  --color-income-border: #a7f3d0;
+  --color-expense: #ef4444;
+  --color-expense-dark: #dc2626;
+  --color-expense-bg: #fee2e2;
+  --color-transfer: #3b82f6;
 
-  --color-transfer-bg: #eff6ff;
-  --color-transfer-text: #2563eb;
-  --color-transfer-border: #bfdbfe;
-
-  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-2xl: 20px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
   --radius-full: 9999px;
 
-  --shadow-subtle: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
-  --shadow-card: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
-  --shadow-elevated: 0 12px 24px -4px rgba(15, 23, 42, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
-  --shadow-glow: 0 10px 25px -5px rgba(5, 150, 105, 0.25);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
 }
 
-/* Reset & Dasar */
-*, *::before, *::after {
+/* ==================== RESET & DASAR ==================== */
+* {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-
-html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 90px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  font-family: var(--font-sans);
-  background-color: var(--color-slate-50);
-  color: var(--color-slate-800);
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #e5e7eb;
+  color: var(--color-gray-900);
   line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  padding-bottom: 5rem;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
-/* Tabular Numbers untuk Seluruh Angka Keuangan */
-.tabular-nums, .currency-num, .card-amount, .tx-amount, .account-balance-val {
+.tabular-nums {
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
 }
 
-.container {
-  width: 100%;
-  max-width: 1180px;
+/* Anti-wrap untuk seluruh angka mata uang */
+.tabular-nums,
+.sum-val,
+.day-income-total,
+.day-expense-total,
+.tx-flat-amount,
+.stat-cat-val,
+.asset-group-subtotal,
+.asset-item-amount,
+.asset-cc-limit,
+.donut-center-amount {
+  white-space: nowrap !important;
+  flex-shrink: 0;
+}
+
+/* Warna Teks Semantik */
+.text-income {
+  color: var(--color-income) !important;
+}
+
+.text-expense {
+  color: var(--color-expense) !important;
+}
+
+.text-net {
+  color: #ffffff !important;
+}
+
+.text-danger {
+  color: var(--color-expense) !important;
+}
+
+/* ==================== DESKTOP MOBILE FRAME WRAPPER ==================== */
+.app-frame {
+  max-width: 540px;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  min-height: 100vh;
+  background-color: var(--color-gray-100);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.12);
 }
 
-/* ==================== HEADER (FIXED & NON-OVERLAPPING) ==================== */
-.app-header {
-  background-color: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--color-slate-200);
+@media (max-width: 540px) {
+  body {
+    background-color: var(--color-gray-100);
+  }
+
+  .app-frame {
+    box-shadow: none;
+  }
+}
+
+/* ==================== TOP HEADER (EMERALD GREEN #059669) ==================== */
+.app-top-header {
+  background-color: var(--color-brand-600);
+  color: #ffffff;
   position: sticky;
   top: 0;
-  z-index: 50;
-  width: 100%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  z-index: 70;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.header-inner {
+.header-tab-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Baris Navigasi Bulan (Tab 1 & Tab 2) */
+.header-month-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 72px;
-  padding: 0.75rem 0;
-  gap: 1rem;
+  padding: 0.65rem 1rem;
 }
 
-.logo-group {
+.month-nav-group {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  text-decoration: none;
+  gap: 0.75rem;
 }
 
-.logo-badge {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+.btn-month-nav {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 1.35rem;
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
-  transition: transform 0.2s ease;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  line-height: 1;
 }
 
-.logo-badge:hover {
-  transform: scale(1.05);
+.btn-month-nav:active {
+  background: rgba(255, 255, 255, 0.3);
 }
 
-.brand-text h1 {
+.month-label-display {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.header-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-header-icon {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #ffffff;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-header-icon:active {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Kolom Pencarian Cepat */
+.search-bar-wrap {
+  display: flex;
+  align-items: center;
+  padding: 0 1rem 0.65rem;
+  gap: 0.4rem;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.search-input {
+  flex: 1;
+  background-color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.85rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--color-gray-900);
+}
+
+.search-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-brand-200);
+}
+
+.btn-clear-search {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #ffffff;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* Bar Ringkasan 3 Kolom */
+.summary-bar-3col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  background-color: var(--color-brand-700);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.55rem 0.75rem;
+  text-align: center;
+  gap: 0.25rem;
+}
+
+.sum-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+.sum-label {
+  font-size: 0.675rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 0.15rem;
+}
+
+.sum-val {
+  font-size: 0.875rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.summary-bar-3col .text-income {
+  color: #a7f3d0 !important;
+}
+
+.summary-bar-3col .text-expense {
+  color: #fecdd3 !important;
+}
+
+.summary-bar-3col .text-net {
+  color: #ffffff !important;
+}
+
+/* Switcher Tipe Statistik (Tab 2) */
+.stat-type-switcher {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  padding: 0 1rem 0.75rem;
+}
+
+.stat-type-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #ffffff;
+  padding: 0.45rem;
+  font-size: 0.825rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.stat-type-btn.active {
+  background-color: #ffffff;
+  color: var(--color-brand-700);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Header Title Row (Tab 3 & Tab 4) */
+.header-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1rem;
+}
+
+.header-title-text h2 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.btn-header-pill {
+  background-color: #ffffff;
+  color: var(--color-brand-700);
+  border: none;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.btn-header-pill:active {
+  transform: scale(0.96);
+}
+
+/* ==================== MAIN CONTENT ==================== */
+.app-main-content {
+  flex: 1;
+  padding-bottom: 84px; /* Ruang untuk Bottom Nav Bar */
+}
+
+.tab-page-view {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==================== TAB 1: DAFTAR TRANSAKSI FLAT BERBASIS TANGGAL ==================== */
+.trans-grouped-container {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header Baris Tanggal (Money Manager Realbyte Style) */
+.day-group-header {
+  background-color: var(--color-gray-100);
+  border-top: 1px solid var(--color-gray-200);
+  border-bottom: 1px solid var(--color-gray-200);
+  padding: 0.45rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.day-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.day-big-date {
   font-size: 1.25rem;
   font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--color-slate-900);
-  line-height: 1.1;
+  line-height: 1;
+  color: var(--color-gray-900);
+  letter-spacing: -0.02em;
+}
+
+.day-badge {
+  font-size: 0.675rem;
+  font-weight: 700;
+  padding: 0.15rem 0.35rem;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+}
+
+.day-badge.day-weekday {
+  background-color: var(--color-gray-200);
+  color: var(--color-gray-700);
+}
+
+.day-badge.day-sun {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.day-badge.day-sat {
+  background-color: #e0f2fe;
+  color: #0284c7;
+}
+
+.day-month-year {
+  font-size: 0.725rem;
+  font-weight: 600;
+  color: var(--color-gray-500);
+}
+
+.day-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.day-income-total {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-income-dark);
+}
+
+.day-expense-total {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-expense-dark);
+}
+
+/* Baris Transaksi Datar (Clean Flat List) */
+.tx-flat-item {
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--color-gray-200);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: background-color 0.15s ease;
+}
+
+.tx-flat-item:active {
+  background-color: var(--color-gray-50);
+}
+
+.tx-flat-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.tx-flat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tx-flat-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-flat-cat-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+.tx-flat-note {
+  font-size: 0.8rem;
+  color: var(--color-gray-600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-flat-account-name {
+  font-size: 0.725rem;
+  color: var(--color-gray-400);
+  margin-top: 0.1rem;
+}
+
+.tx-flat-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.tx-flat-amount {
+  font-size: 0.925rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.tx-flat-amount.expense {
+  color: var(--color-expense);
+}
+
+.tx-flat-amount.income {
+  color: var(--color-income-dark);
+}
+
+.tx-flat-amount.transfer {
+  color: var(--color-transfer);
+}
+
+.btn-del-tx-flat {
+  background: transparent;
+  border: none;
+  color: var(--color-gray-300);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.2rem;
+  line-height: 1;
+}
+
+.btn-del-tx-flat:hover,
+.btn-del-tx-flat:active {
+  color: var(--color-expense);
+}
+
+/* Empty State */
+.empty-state-card {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: var(--color-gray-500);
+}
+
+.empty-state-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-gray-800);
+  margin-bottom: 0.25rem;
+}
+
+.empty-state-desc {
+  font-size: 0.825rem;
+  color: var(--color-gray-500);
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+/* ==================== TAB 2: STATISTIK & DONUT CHART ==================== */
+.stat-chart-card {
+  background-color: #ffffff;
+  margin: 0.85rem;
+  border-radius: var(--radius-xl);
+  padding: 1.25rem 1rem;
+  border: 1px solid var(--color-gray-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.donut-wrapper {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#stat-donut-canvas {
+  width: 220px;
+  height: 220px;
+}
+
+.donut-center-info {
+  position: absolute;
+  text-align: center;
+  pointer-events: none;
+  max-width: 140px;
+}
+
+.donut-center-label {
+  font-size: 0.725rem;
+  color: var(--color-gray-500);
+  font-weight: 600;
+  display: block;
+}
+
+.donut-center-amount {
+  font-size: 1.1rem;
+  color: var(--color-gray-900);
+  font-weight: 800;
+  display: block;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-ranking-section {
+  margin: 0 0.85rem 1.5rem;
+}
+
+.stat-ranking-header {
+  font-size: 0.775rem;
+  font-weight: 700;
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.stat-ranking-list {
+  background-color: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-gray-200);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.stat-cat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-pct-badge {
+  width: 44px;
+  padding: 0.25rem 0.2rem;
+  border-radius: var(--radius-xs);
+  font-weight: 800;
+  font-size: 0.75rem;
+  text-align: center;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.stat-cat-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-cat-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.stat-cat-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+.stat-cat-val {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--color-gray-900);
+}
+
+.stat-cat-bar-bg {
+  width: 100%;
+  height: 6px;
+  background-color: var(--color-gray-100);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.stat-cat-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+}
+
+/* ==================== TAB 3: ASET & LIABILITAS FLAT LIST ==================== */
+.asset-flat-list-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.asset-group-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.asset-group-hdr {
+  background-color: var(--color-gray-100);
+  border-top: 1px solid var(--color-gray-200);
+  border-bottom: 1px solid var(--color-gray-200);
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-gray-700);
+}
+
+.asset-group-hdr-left {
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
 
-.badge-tagline {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background-color: var(--color-brand-50);
-  color: var(--color-brand-700);
-  padding: 0.15rem 0.45rem;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-brand-100);
+.asset-group-subtotal {
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--color-gray-900);
 }
 
-.brand-text p {
-  font-size: 0.78rem;
-  color: var(--color-slate-500);
-  font-weight: 500;
-}
-
-.header-right {
+.asset-item-flat {
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--color-gray-200);
+  padding: 0.8rem 1rem;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
-/* Switcher Mode Saldo */
+.asset-item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.asset-item-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.asset-item-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+.asset-item-meta {
+  font-size: 0.725rem;
+  color: var(--color-gray-500);
+  margin-top: 0.1rem;
+}
+
+/* Khusus Tag Siklus Kartu Kredit */
+.asset-cc-cycle-tag {
+  display: inline-block;
+  font-size: 0.675rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-xs);
+  margin-top: 0.3rem;
+}
+
+.asset-cc-cycle-tag.normal {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.asset-cc-cycle-tag.warning {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.asset-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.asset-item-amount {
+  font-size: 0.925rem;
+  font-weight: 800;
+  color: var(--color-gray-900);
+}
+
+.asset-item-sub-converted {
+  font-size: 0.725rem;
+  color: var(--color-gray-500);
+}
+
+.asset-cc-limit {
+  font-size: 0.725rem;
+  color: var(--color-gray-500);
+  font-weight: 600;
+}
+
+.cc-tagihan-lbl {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-expense-dark);
+}
+
+.asset-item-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.btn-acc-action {
+  background: var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-xs);
+  padding: 0.15rem 0.35rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.btn-acc-action:hover,
+.btn-acc-action:active {
+  background-color: var(--color-gray-200);
+}
+
+/* ==================== TAB 4: MENU LAINNYA (SETTINGS) ==================== */
+.settings-menu-container {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 1.5rem;
+}
+
+.settings-section-header {
+  font-size: 0.725rem;
+  font-weight: 700;
+  color: var(--color-gray-500);
+  letter-spacing: 0.05em;
+  padding: 1rem 1rem 0.4rem;
+}
+
+.settings-card-group {
+  background-color: #ffffff;
+  border-top: 1px solid var(--color-gray-200);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.settings-row-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-gray-100);
+  font-family: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.settings-row-item:last-child {
+  border-bottom: none;
+}
+
+.settings-row-item:active {
+  background-color: var(--color-gray-50);
+}
+
+.settings-row-item.static-row {
+  cursor: default;
+}
+
+.settings-row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.settings-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+.settings-row-desc {
+  font-size: 0.75rem;
+  color: var(--color-gray-500);
+  margin-top: 0.1rem;
+}
+
+.settings-row-chevron {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-gray-300);
+}
+
 .segmented-toggle {
   display: inline-flex;
-  background-color: var(--color-slate-100);
-  border: 1px solid var(--color-slate-200);
-  border-radius: var(--radius-full);
-  padding: 3px;
-  gap: 2px;
+  background-color: var(--color-gray-200);
+  padding: 2px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
 }
 
 .toggle-btn {
   border: none;
   background: transparent;
-  color: var(--color-slate-600);
-  padding: 0.35rem 0.85rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: var(--radius-full);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.775rem;
+  font-weight: 700;
+  color: var(--color-gray-600);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.2s ease;
   font-family: inherit;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.toggle-btn:hover {
-  color: var(--color-slate-900);
 }
 
 .toggle-btn.active {
   background-color: #ffffff;
-  color: var(--color-slate-900);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  color: var(--color-brand-700);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-/* Tombol-tombol */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  padding: 0.55rem 1.15rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  font-family: inherit;
+.settings-app-footer {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+  color: var(--color-gray-400);
+  font-size: 0.75rem;
 }
 
-.btn-primary {
+.app-version-pill {
+  display: inline-block;
+  background-color: var(--color-gray-200);
+  color: var(--color-gray-700);
+  font-size: 0.725rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  margin-bottom: 0.35rem;
+}
+
+/* ==================== FLOATING ACTION BUTTON (FAB) ==================== */
+.fab-circle-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-full);
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
-  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
-}
-
-.btn-primary:hover {
-  background: linear-gradient(135deg, #047857 0%, #064e3b 100%);
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
-  transform: translateY(-1px);
-}
-
-.btn-white {
-  background-color: #ffffff;
-  color: var(--color-slate-700);
-  border: 1px solid var(--color-slate-200);
-  box-shadow: var(--shadow-subtle);
-}
-
-.btn-white:hover {
-  background-color: var(--color-slate-50);
-  color: var(--color-slate-900);
-  border-color: var(--color-slate-300);
-}
-
-.btn-ghost {
-  background-color: transparent;
-  color: var(--color-slate-600);
-  border: 1px solid transparent;
-}
-
-.btn-ghost:hover {
-  background-color: var(--color-slate-100);
-  color: var(--color-slate-900);
-}
-
-.btn-danger {
-  background-color: var(--color-expense-bg);
-  color: var(--color-expense-text);
-  border-color: var(--color-expense-border);
-}
-
-.btn-danger:hover {
-  background-color: #ffe4e6;
-}
-
-.btn-sm {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.8rem;
-  border-radius: var(--radius-sm);
-}
-
-/* ==================== MAIN CONTENT & HERO SECTION (FIXED PADDING) ==================== */
-.main-content {
-  padding-top: 2rem; /* Memastikan tidak tertutup header */
-}
-
-.hero-bento {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 1.25rem;
-  margin-bottom: 2.5rem;
-}
-
-/* Kartu 1: Sisa Uang Siap Pakai (Dark Emerald Gradient) */
-.card-hero-safe {
-  background: linear-gradient(140deg, #064e3b 0%, #065f46 45%, #047857 100%);
-  border-radius: var(--radius-2xl);
-  padding: 2.25rem 2rem 2rem;
-  color: #ffffff;
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--shadow-glow), 0 20px 25px -5px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.card-hero-safe::before {
-  content: "";
-  position: absolute;
-  top: -50px;
-  right: -50px;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, rgba(16, 185, 129, 0) 70%);
-  pointer-events: none;
-}
-
-.hero-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  background-color: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(8px);
-  padding: 0.35rem 0.85rem;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #a7f3d0;
-  margin-bottom: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  width: fit-content;
-}
-
-.safe-amount-wrap {
-  margin-bottom: 0.75rem;
-}
-
-.safe-amount {
-  font-size: 2.75rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  color: #ffffff;
-}
-
-.safe-desc {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.5;
-  max-width: 480px;
-}
-
-/* Tagihan Kartu Kredit Callout di dalam Kartu Hero Hijau */
-.credit-debt-callout {
-  margin-top: 1.25rem;
-  padding: 0.75rem 1rem;
-  background-color: rgba(0, 0, 0, 0.22);
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: nowrap;
-  font-size: 0.825rem;
-}
-
-.credit-debt-callout .debt-label {
-  color: rgba(255, 255, 255, 0.85);
+  border: none;
+  font-size: 1.35rem;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.credit-debt-callout .debt-value {
-  font-weight: 800;
-  color: #fecdd3; /* Soft red text */
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.safe-footer-meta {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-/* Kartu 2: Net Worth (Kekayaan Bersih) & Arus Kas */
-.card-hero-total {
-  background-color: #ffffff;
-  border-radius: var(--radius-2xl);
-  padding: 2.25rem 2rem 2rem;
-  border: 1px solid var(--color-slate-200);
-  box-shadow: var(--shadow-card);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.total-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.4rem;
-}
-
-.total-label {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--color-slate-500);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.total-amount {
-  font-size: 2.25rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--color-slate-900);
-  line-height: 1.15;
-  margin-bottom: 0.25rem;
-}
-
-.total-subtext {
-  font-size: 0.8rem;
-  color: var(--color-slate-400);
-  margin-bottom: 1.25rem;
-}
-
-.currency-breakdown-list {
-  background-color: var(--color-slate-50);
-  border: 1px solid var(--color-slate-200);
-  border-radius: var(--radius-md);
-  padding: 0.75rem 1rem;
-  margin-bottom: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  font-size: 0.825rem;
-}
-
-/* Cashflow Mini Cards */
-.cashflow-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-slate-100);
-}
-
-.cashflow-item {
-  background-color: var(--color-slate-50);
-  border-radius: var(--radius-md);
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--color-slate-200);
-}
-
-.cashflow-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-slate-500);
-  margin-bottom: 0.2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.cashflow-value {
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.cashflow-in .cashflow-value {
-  color: var(--color-brand-600);
-}
-
-.cashflow-out .cashflow-value {
-  color: var(--color-expense-text);
-}
-
-/* ==================== BENTO GRID: AKUN KEUANGAN (ACCOUNTS) ==================== */
-.section-title-wrap {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: var(--color-slate-900);
-  letter-spacing: -0.02em;
-}
-
-.section-subtitle {
-  font-size: 0.825rem;
-  color: var(--color-slate-500);
-  margin-top: 0.15rem;
-}
-
-/* ==================== 6 KELOMPOK AKUN KEUANGAN (GROUPED CONTAINERS) ==================== */
-.account-groups-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  margin-bottom: 2.75rem;
-}
-
-.account-group-card {
-  background-color: #ffffff;
-  border-radius: var(--radius-2xl);
-  border: 1px solid var(--color-slate-200);
-  box-shadow: var(--shadow-subtle);
-  overflow: hidden;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.account-group-card:hover {
-  border-color: var(--color-slate-300);
-}
-
-/* Header Accordion Kelompok Akun */
-.group-header {
-  padding: 1.15rem 1.35rem;
-  background-color: #ffffff;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.45);
   cursor: pointer;
-  user-select: none;
-  border-bottom: 1px solid transparent;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  position: fixed;
+  bottom: 74px;
+  right: calc(50% - 270px + 18px);
+  z-index: 85;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.group-header:hover {
-  background-color: var(--color-slate-50);
+.fab-circle-btn:active {
+  transform: scale(0.92);
 }
 
-.account-group-card:not(.is-collapsed) .group-header {
-  border-bottom-color: var(--color-slate-100);
+@media (max-width: 540px) {
+  .fab-circle-btn {
+    right: 18px;
+  }
 }
 
-.group-header-left {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.group-icon-badge {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.35rem;
-  flex-shrink: 0;
-}
-
-.group-title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.group-title {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--color-slate-900);
-  letter-spacing: -0.02em;
-}
-
-.group-badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.15rem 0.5rem;
-  border-radius: var(--radius-sm);
-  letter-spacing: 0.02em;
-}
-
-.badge-liquid {
-  background-color: var(--color-brand-50);
-  color: var(--color-brand-700);
-  border: 1px solid var(--color-brand-100);
-}
-
-.badge-liability {
-  background-color: var(--color-expense-bg);
-  color: var(--color-expense-text);
-  border: 1px solid var(--color-expense-border);
-}
-
-.badge-nonliquid {
-  background-color: #f3e8ff;
-  color: #7e22ce;
-  border: 1px solid #e9d5ff;
-}
-
-.group-count-badge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-slate-500);
-  background-color: var(--color-slate-100);
-  padding: 0.15rem 0.55rem;
-  border-radius: var(--radius-full);
-}
-
-.group-header-right {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.group-subtotal-wrap {
-  text-align: right;
-}
-
-.group-subtotal-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--color-slate-400);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.group-subtotal-val {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--color-slate-900);
-}
-
-.btn-group-add {
-  font-size: 0.75rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-slate-200);
+/* ==================== FIXED BOTTOM TAB BAR (4 TABS) ==================== */
+.bottom-tab-bar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  max-width: 540px;
+  height: 62px;
   background-color: #ffffff;
-  color: var(--color-slate-700);
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  transition: all 0.15s ease;
-}
-
-.btn-group-add:hover {
-  background-color: var(--color-brand-50);
-  color: var(--color-brand-700);
-  border-color: var(--color-brand-200);
-}
-
-.group-chevron {
-  font-size: 0.85rem;
-  color: var(--color-slate-400);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-}
-
-.account-group-card.is-collapsed .group-chevron {
-  transform: rotate(-90deg);
-}
-
-/* Isi Kelompok Akun */
-.group-body {
-  padding: 1.25rem;
-  background-color: #fafbfd;
-  transition: all 0.25s ease;
-}
-
-.account-group-card.is-collapsed .group-body {
-  display: none;
-}
-
-.group-accounts-grid {
+  border-top: 1px solid var(--color-gray-200);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(4, 1fr);
+  z-index: 80;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
 }
 
-/* Item Kartu Akun di Dalam Kelompok */
-.account-card {
-  background-color: #ffffff;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--color-slate-200);
-  padding: 1.15rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  transition: all 0.2s ease;
+.tab-btn {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-}
-
-.account-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-elevated);
-  border-color: var(--color-slate-300);
-}
-
-.account-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.6rem;
-}
-
-.account-icon-badge {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-md);
-  display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.35rem;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
-}
-
-.account-badge-group {
-  display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.badge-acc-type {
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-slate-100);
-  color: var(--color-slate-700);
-  border: 1px solid var(--color-slate-200);
-}
-
-.badge-credit-type {
-  background-color: var(--color-expense-bg);
-  color: var(--color-expense-text);
-  border-color: var(--color-expense-border);
-}
-
-.badge-loan-type {
-  background-color: #fffbeb;
-  color: #b45309;
-  border-color: #fef3c7;
-}
-
-.badge-locked-type {
-  background-color: #f3e8ff;
-  color: #7e22ce;
-  border-color: #e9d5ff;
-}
-
-.account-main-info {
-  margin-top: 0.75rem;
-}
-
-.account-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--color-slate-900);
-  letter-spacing: -0.015em;
-}
-
-.account-desc {
-  font-size: 0.75rem;
-  color: var(--color-slate-500);
-  line-height: 1.35;
-  margin-top: 0.15rem;
-}
-
-.account-bottom-section {
-  margin-top: 1rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--color-slate-100);
-}
-
-.account-balance-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--color-slate-500);
-  margin-bottom: 0.15rem;
-}
-
-.account-balance-val {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--color-slate-900);
-  letter-spacing: -0.02em;
-}
-
-.account-converted-sub {
-  font-size: 0.75rem;
-  color: var(--color-slate-400);
-  font-weight: 500;
-  margin-top: 0.15rem;
-}
-
-/* Detail Khusus Kartu Kredit (Limit, Siklus & Jatuh Tempo) */
-.credit-card-details {
-  background-color: var(--color-slate-50);
-  border-radius: var(--radius-md);
-  padding: 0.65rem 0.85rem;
-  margin-top: 0.75rem;
-  font-size: 0.75rem;
-  border: 1px solid var(--color-slate-200);
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.credit-detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.credit-bar-track {
-  width: 100%;
-  height: 5px;
-  background-color: var(--color-slate-200);
-  border-radius: var(--radius-full);
-  margin-top: 0.25rem;
-  overflow: hidden;
-}
-
-.credit-bar-fill {
-  height: 100%;
-  border-radius: var(--radius-full);
-  background-color: var(--color-expense-text);
-  transition: width 0.4s ease;
-}
-
-/* Kotak Siklus Penagihan & Jatuh Tempo Credit Card */
-.credit-cycle-box {
-  background-color: #ffffff;
-  border: 1px solid var(--color-slate-200);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.65rem;
-  margin-top: 0.35rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.cycle-period-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.72rem;
-  color: var(--color-slate-600);
-}
-
-.cycle-period-highlight {
-  font-weight: 700;
-  color: var(--color-slate-800);
-}
-
-.cycle-amount-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.72rem;
-  border-top: 1px dashed var(--color-slate-100);
-  padding-top: 0.25rem;
-}
-
-/* Badge Indikator Jatuh Tempo */
-.badge-due-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.25rem 0.55rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.72rem;
-  font-weight: 700;
-  width: 100%;
-  justify-content: space-between;
-  margin-top: 0.25rem;
-}
-
-.badge-due-normal {
-  background-color: #f1f5f9;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-}
-
-.badge-due-warning {
-  background-color: #fef3c7;
-  color: #b45309;
-  border: 1px solid #fde68a;
-  animation: pulseWarning 2s infinite ease-in-out;
-}
-
-.badge-due-urgent {
-  background-color: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fca5a5;
-  animation: pulseUrgent 1.5s infinite ease-in-out;
-}
-
-@keyframes pulseWarning {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.85; }
-}
-
-@keyframes pulseUrgent {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.01); }
-}
-
-/* Detail Khusus Pinjaman (Loan) */
-.loan-details-box {
-  background-color: var(--color-slate-50);
-  border-radius: var(--radius-md);
-  padding: 0.65rem 0.85rem;
-  margin-top: 0.75rem;
-  font-size: 0.75rem;
-  border: 1px solid var(--color-slate-200);
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.loan-bar-track {
-  width: 100%;
-  height: 5px;
-  background-color: var(--color-slate-200);
-  border-radius: var(--radius-full);
-  margin-top: 0.25rem;
-  overflow: hidden;
-}
-
-.loan-bar-fill {
-  height: 100%;
-  border-radius: var(--radius-full);
-  background-color: #10b981;
-  transition: width 0.4s ease;
-}
-
-.account-actions-row {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.4rem;
-  margin-top: 0.75rem;
-}
-
-/* State Kosong Per Kelompok */
-.group-empty-state {
-  background-color: #ffffff;
-  border: 1px dashed var(--color-slate-300);
-  border-radius: var(--radius-lg);
-  padding: 1.25rem;
-  text-align: center;
-  color: var(--color-slate-500);
-  font-size: 0.825rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* ==================== BREAKDOWN PENGELUARAN PER KATEGORI ==================== */
-.category-breakdown-section {
-  background-color: #ffffff;
-  border-radius: var(--radius-2xl);
-  border: 1px solid var(--color-slate-200);
-  padding: 1.5rem;
-  box-shadow: var(--shadow-card);
-  margin-bottom: 2rem;
-}
-
-.cat-breakdown-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-}
-
-.cat-breakdown-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--color-slate-900);
-}
-
-/* Stacked Multi-Color Progress Bar */
-.cat-stacked-bar {
-  display: flex;
-  height: 10px;
-  width: 100%;
-  background-color: var(--color-slate-100);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  margin-bottom: 1.25rem;
-}
-
-.cat-stacked-segment {
-  height: 100%;
-  transition: width 0.3s ease;
-}
-
-.cat-pills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 0.85rem;
-}
-
-.cat-pill-item {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.65rem 0.85rem;
-  background-color: var(--color-slate-50);
-  border: 1px solid var(--color-slate-200);
-  border-radius: var(--radius-md);
-  font-size: 0.825rem;
-}
-
-.cat-pill-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.cat-pill-name {
-  font-weight: 600;
-  color: var(--color-slate-700);
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.cat-pill-amount {
-  font-weight: 700;
-  color: var(--color-slate-900);
-}
-
-/* ==================== RIWAYAT TRANSAKSI MODERN ==================== */
-.tx-container-card {
-  background-color: #ffffff;
-  border-radius: var(--radius-2xl);
-  border: 1px solid var(--color-slate-200);
-  padding: 1.75rem;
-  box-shadow: var(--shadow-card);
-}
-
-.tx-header-wrap {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.tx-filter-pills {
-  display: flex;
-  gap: 0.4rem;
-  background-color: var(--color-slate-100);
-  padding: 4px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-slate-200);
-}
-
-.tx-filter-btn {
+  gap: 0.2rem;
   border: none;
   background: transparent;
-  color: var(--color-slate-600);
-  padding: 0.35rem 0.85rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  border-radius: var(--radius-full);
   cursor: pointer;
-  transition: all 0.2s ease;
+  color: var(--color-gray-400);
   font-family: inherit;
+  transition: color 0.15s ease;
 }
 
-.tx-filter-btn.active {
-  background-color: #ffffff;
-  color: var(--color-slate-900);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.tx-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.tx-item-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.15rem;
-  background-color: var(--color-slate-50);
-  border: 1px solid var(--color-slate-200);
-  border-radius: var(--radius-lg);
-  transition: all 0.2s ease;
-}
-
-.tx-item-row:hover {
-  background-color: #ffffff;
-  border-color: var(--color-slate-300);
-  box-shadow: var(--shadow-subtle);
-  transform: translateX(2px);
-}
-
-.tx-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  min-width: 0;
-}
-
-.tx-icon-circle {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.tab-btn-icon {
   font-size: 1.25rem;
-  flex-shrink: 0;
+  line-height: 1;
 }
 
-.tx-icon-income {
-  background-color: var(--color-income-bg);
-  color: var(--color-income-text);
-  border: 1px solid var(--color-income-border);
-}
-
-.tx-icon-expense {
-  background-color: var(--color-expense-bg);
-  color: var(--color-expense-text);
-  border: 1px solid var(--color-expense-border);
-}
-
-.tx-icon-transfer {
-  background-color: var(--color-transfer-bg);
-  color: var(--color-transfer-text);
-  border: 1px solid var(--color-transfer-border);
-}
-
-.tx-details {
-  min-width: 0;
-}
-
-.tx-title {
-  font-size: 0.925rem;
-  font-weight: 700;
-  color: var(--color-slate-900);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tx-meta {
-  font-size: 0.78rem;
-  color: var(--color-slate-500);
-  margin-top: 0.15rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.tx-account-tag {
-  background-color: #ffffff;
-  border: 1px solid var(--color-slate-200);
-  padding: 0.1rem 0.45rem;
-  border-radius: var(--radius-sm);
+.tab-btn-label {
+  font-size: 0.7rem;
   font-weight: 600;
-  color: var(--color-slate-700);
 }
 
-.tx-category-tag {
-  background-color: var(--color-slate-100);
-  padding: 0.1rem 0.45rem;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  color: var(--color-slate-600);
-}
-
-.tx-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-shrink: 0;
-}
-
-.tx-amount {
-  font-size: 1.05rem;
-  font-weight: 800;
-  text-align: right;
-}
-
-.tx-amount-income {
+.tab-btn.active {
   color: var(--color-brand-600);
 }
 
-.tx-amount-expense {
-  color: var(--color-expense-text);
+.tab-btn.active .tab-btn-label {
+  font-weight: 800;
 }
 
-.tx-amount-transfer {
-  color: var(--color-transfer-text);
-}
-
-.btn-del-tx {
-  opacity: 0.4;
-  transition: opacity 0.2s ease;
-  background: none;
-  border: none;
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: var(--radius-sm);
-}
-
-.tx-item-row:hover .btn-del-tx {
-  opacity: 1;
-}
-
-.btn-del-tx:hover {
-  background-color: var(--color-expense-bg);
-  color: var(--color-expense-text);
-}
-
-/* Empty State */
-.empty-box {
-  text-align: center;
-  padding: 3.5rem 1.5rem;
-  color: var(--color-slate-400);
-}
-
-.empty-icon {
-  font-size: 2.75rem;
-  margin-bottom: 0.75rem;
-}
-
-/* ==================== MODALS ==================== */
+/* ==================== MODALS & FORM CONTROLS ==================== */
 .modal-backdrop {
-  display: none;
   position: fixed;
-  inset: 0;
-  background-color: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 100;
-  align-items: center;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: none;
   justify-content: center;
-  padding: 1.25rem;
+  align-items: center;
+  z-index: 100;
+  padding: 1rem;
 }
 
 .modal-backdrop.open {
@@ -1280,587 +1089,247 @@ body {
   background-color: #ffffff;
   border-radius: var(--radius-2xl);
   width: 100%;
-  max-width: 520px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
-  border: 1px solid var(--color-slate-200);
-  animation: modalEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes modalEnter {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.modal-top {
-  padding: 1.5rem 1.75rem 1.25rem;
-  border-bottom: 1px solid var(--color-slate-100);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-title {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: var(--color-slate-900);
-  letter-spacing: -0.02em;
-}
-
-.btn-close-modal {
-  background: transparent;
-  border: none;
-  font-size: 1.35rem;
-  color: var(--color-slate-400);
-  cursor: pointer;
-  line-height: 1;
-  padding: 0.25rem;
-  border-radius: var(--radius-sm);
-  transition: all 0.2s ease;
-}
-
-.btn-close-modal:hover {
-  color: var(--color-slate-800);
-  background-color: var(--color-slate-100);
-}
-
-.modal-content {
-  padding: 1.75rem;
-}
-
-.modal-bottom {
-  padding: 1.25rem 1.75rem;
-  background-color: var(--color-slate-50);
-  border-top: 1px solid var(--color-slate-100);
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  border-bottom-left-radius: var(--radius-2xl);
-  border-bottom-right-radius: var(--radius-2xl);
-}
-
-.form-field {
-  margin-bottom: 1.25rem;
-}
-
-.form-label {
-  display: block;
-  font-size: 0.825rem;
-  font-weight: 700;
-  color: var(--color-slate-700);
-  margin-bottom: 0.4rem;
-}
-
-.form-control {
-  width: 100%;
-  padding: 0.65rem 0.95rem;
-  font-size: 0.9rem;
-  border: 1px solid var(--color-slate-200);
-  border-radius: var(--radius-md);
-  background-color: #ffffff;
-  color: var(--color-slate-900);
-  font-family: inherit;
-  transition: all 0.2s ease;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--color-brand-500);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
-}
-
-.form-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.form-hint {
-  font-size: 0.75rem;
-  color: var(--color-slate-400);
-  margin-top: 0.35rem;
-}
-
-/* Modal Tabs Transaksi */
-.tx-modal-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.4rem;
-  background-color: var(--color-slate-100);
-  padding: 4px;
-  border-radius: var(--radius-md);
-  margin-bottom: 1.5rem;
-}
-
-.tx-modal-tab-btn {
-  border: none;
-  background: transparent;
-  padding: 0.55rem;
-  font-size: 0.825rem;
-  font-weight: 700;
-  color: var(--color-slate-500);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-  text-align: center;
-}
-
-.tx-modal-tab-btn.active {
-  background-color: #ffffff;
-  color: var(--color-slate-900);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-}
-
-.live-convert-alert {
-  background-color: var(--color-brand-50);
-  border: 1px solid var(--color-brand-100);
-  border-radius: var(--radius-md);
-  padding: 0.75rem 1rem;
-  font-size: 0.8rem;
-  color: var(--color-brand-700);
-  margin-top: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.credit-payment-notice {
-  background-color: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: var(--radius-md);
-  padding: 0.75rem 1rem;
-  font-size: 0.8rem;
-  color: #1d4ed8;
-  margin-top: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Modal Kurs Items */
-.rates-box-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.rate-row-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.85rem 1rem;
-  background-color: var(--color-slate-50);
-  border: 1px solid var(--color-slate-200);
-  border-radius: var(--radius-md);
-}
-
-.rate-badge-code {
-  font-size: 0.8rem;
-  font-weight: 800;
-  background-color: var(--color-slate-200);
-  color: var(--color-slate-800);
-  padding: 0.2rem 0.5rem;
-  border-radius: var(--radius-sm);
-}
-
-.rate-input-field {
-  width: 140px;
-  padding: 0.4rem 0.65rem;
-  border: 1px solid var(--color-slate-200);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  font-family: inherit;
-  text-align: right;
-  font-weight: 700;
-}
-
-/* ==================== GLOBAL CURRENCY NUMBERS NOWRAP ==================== */
-.safe-amount,
-.total-amount,
-.debt-value,
-.cashflow-value,
-.group-subtotal-val,
-.account-balance-val,
-.cat-pill-amount,
-.tx-item-amount,
-.liquid-summary-val,
-.net-worth-number,
-.rate-input-field,
-.account-card-balance {
-  white-space: nowrap !important;
-  flex-shrink: 0;
-}
-
-/* ==================== KOMPONEN RESPONSIVE MOBILE & FAB ==================== */
-.btn-mobile-menu {
-  display: none;
-}
-
-.mobile-text {
-  display: none;
-}
-
-.desktop-text {
-  display: inline;
-}
-
-.fab-btn {
-  display: none;
-}
-
-/* Sheet Modal Khusus Menu Mobile */
-.modal-mobile-sheet {
   max-width: 480px;
-}
-
-.mobile-menu-grid {
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: modalPop 0.2s ease;
 }
 
-.mobile-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  width: 100%;
-  padding: 0.85rem 1rem;
-  background-color: var(--color-slate-50);
-  border: 1px solid var(--color-slate-200);
-  border-radius: var(--radius-lg);
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
+@keyframes modalPop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-.mobile-menu-item:hover,
-.mobile-menu-item:active {
-  background-color: var(--color-brand-50);
-  border-color: var(--color-brand-200);
-  transform: translateY(-1px);
-}
-
-.mobile-menu-item-icon {
-  font-size: 1.35rem;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-  background-color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  flex-shrink: 0;
-}
-
-.mobile-menu-item-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.mobile-menu-item-content h4 {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--color-slate-900);
-  margin-bottom: 0.15rem;
-}
-
-.mobile-menu-item-content p {
-  font-size: 0.75rem;
-  color: var(--color-slate-500);
-  line-height: 1.3;
-}
-
-.mobile-menu-arrow {
-  font-size: 1.35rem;
-  color: var(--color-slate-400);
-  font-weight: 700;
-}
-
-/* ==================== RESPONSIF TABLET & MOBILE (< 840px) ==================== */
-@media (max-width: 840px) {
-  .hero-bento {
-    grid-template-columns: 1fr;
-  }
-
-  .form-grid-2 {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ==================== RESPONSIF KHUSUS HP NATIVE (< 768px) ==================== */
-@media (max-width: 768px) {
-  /* 1. Header 1 Baris Sangat Ringkas di HP */
-  .app-header {
-    padding: 0.45rem 0;
-  }
-
-  .header-inner {
-    min-height: auto;
-    padding: 0;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .logo-group {
-    gap: 0.45rem;
-    text-decoration: none;
-    flex-shrink: 1;
-    min-width: 0;
-  }
-
-  .logo-badge {
-    width: 34px;
-    height: 34px;
-    font-size: 1.05rem;
-    flex-shrink: 0;
-  }
-
-  .brand-text h1 {
-    font-size: 1.05rem;
-    letter-spacing: -0.02em;
-    white-space: nowrap;
-  }
-
-  .brand-text .badge-tagline,
-  .brand-text p {
-    display: none !important;
-  }
-
-  .header-right {
-    width: auto;
-    gap: 0.35rem;
-    justify-content: flex-end;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
-  /* Sembunyikan tombol utilitas desktop dari header mobile */
-  .btn-desktop-only {
-    display: none !important;
-  }
-
-  /* Tampilkan tombol menu mobile ringkas */
-  .btn-mobile-menu {
-    display: inline-flex !important;
-    padding: 0.38rem 0.65rem;
-    font-size: 0.8rem;
-    gap: 0.25rem;
-    align-items: center;
-  }
-
-  .desktop-text {
-    display: none !important;
-  }
-
-  .mobile-text {
-    display: inline !important;
-    font-size: 0.775rem;
-    font-weight: 700;
-  }
-
-  .segmented-toggle {
-    padding: 2px;
-  }
-
-  .toggle-btn {
-    padding: 0.32rem 0.55rem;
-    font-size: 0.775rem;
-  }
-
-  /* 2. Layout Hero Card Ringkas di HP */
-  .hero-bento {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .card-hero-safe,
-  .card-hero-total {
-    padding: 1.15rem 1rem;
-    border-radius: var(--radius-xl);
-  }
-
-  .hero-tag {
-    padding: 0.2rem 0.55rem;
-    font-size: 0.675rem;
-    margin-bottom: 0.45rem;
-  }
-
-  .safe-amount-wrap {
-    margin-bottom: 0.25rem;
-  }
-
-  .safe-amount {
-    font-size: 1.85rem !important;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-  }
-
-  .safe-desc {
-    font-size: 0.75rem;
-    line-height: 1.35;
-  }
-
-  .total-amount {
-    font-size: 1.75rem !important;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-  }
-
-  .credit-debt-callout {
-    margin-top: 0.65rem;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.75rem;
-    flex-wrap: nowrap;
-    gap: 0.4rem;
-  }
-
-  .credit-debt-callout .debt-label {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 0.725rem;
-  }
-
-  .credit-debt-callout .debt-value {
-    white-space: nowrap;
-    flex-shrink: 0;
-    font-size: 0.8rem;
-  }
-
-  .safe-footer-meta {
-    margin-top: 0.65rem;
-    padding-top: 0.6rem;
-  }
-
-  .total-footer-grid {
-    margin-top: 0.65rem;
-    padding-top: 0.6rem;
-    gap: 0.5rem;
-  }
-
-  .cashflow-card {
-    padding: 0.5rem 0.65rem;
-  }
-
-  .cashflow-value {
-    font-size: 0.875rem !important;
-  }
-
-  /* 3. Floating Action Button (FAB) Catat Transaksi di HP */
-  .fab-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 90;
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-    color: #ffffff;
-    border: none;
-    border-radius: var(--radius-full);
-    padding: 0.8rem 1.25rem;
-    font-size: 0.9rem;
-    font-weight: 700;
-    box-shadow: 0 10px 25px -3px rgba(5, 150, 105, 0.45), 0 4px 6px -2px rgba(5, 150, 105, 0.2);
-    cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .fab-btn:active {
-    transform: scale(0.94);
-  }
-
-  .fab-btn .fab-icon {
-    font-size: 1.05rem;
-    line-height: 1;
-  }
-
-  /* 4. Modal Bergaya Bottom Sheet di Layar Mobile */
+@media (max-width: 640px) {
   .modal-backdrop {
     align-items: flex-end;
     padding: 0;
   }
 
   .modal-panel {
-    width: 100%;
     max-width: 100%;
     border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
     max-height: 88vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
     animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   @keyframes modalSlideUp {
-    from {
-      opacity: 0;
-      transform: translateY(100%);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(100%); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Cegah auto-zoom iOS Safari & Android Chrome saat fokus input */
   .form-control,
   input,
   select,
   textarea {
-    font-size: 16px !important;
+    font-size: 16px !important; /* Cegah auto-zoom di HP */
   }
+}
 
-  /* 5. Optimasi Elemen List & Filter */
-  .cat-pills-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-  }
+.modal-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid var(--color-gray-200);
+}
 
-  .account-group-header {
-    padding: 0.75rem 0.85rem;
-  }
+.modal-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-gray-900);
+}
 
-  .account-group-title {
-    font-size: 0.9rem;
-  }
+.btn-close-modal {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--color-gray-400);
+  cursor: pointer;
+  line-height: 1;
+}
 
-  .account-card-item {
-    padding: 0.75rem 0.85rem;
-    gap: 0.4rem;
-  }
+.modal-content {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
 
-  .account-balance-val {
-    font-size: 0.9rem;
-  }
+.modal-bottom {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--color-gray-200);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  background-color: var(--color-gray-50);
+}
 
-  .tx-item-card {
-    padding: 0.75rem 0.85rem;
-    gap: 0.4rem;
-  }
+/* Form Styles */
+.form-field {
+  margin-bottom: 1rem;
+}
 
-  .tx-item-amount {
-    font-size: 0.9rem;
-  }
+.form-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-gray-700);
+  margin-bottom: 0.35rem;
+}
 
-  .tx-filters-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.25rem;
+.form-control {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  background-color: #ffffff;
+  color: var(--color-gray-900);
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-brand-600);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
   }
+}
+
+.form-hint {
+  font-size: 0.725rem;
+  color: var(--color-gray-500);
+  margin-top: 0.3rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.15rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.btn-primary {
+  background-color: var(--color-brand-600);
+  color: #ffffff;
+}
+
+.btn-primary:active {
+  background-color: var(--color-brand-700);
+}
+
+.btn-white {
+  background-color: #ffffff;
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-300);
+}
+
+.btn-white:active {
+  background-color: var(--color-gray-100);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-gray-600);
+}
+
+.btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* Modal Tabs Transaksi */
+.tx-modal-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.3rem;
+  background-color: var(--color-gray-100);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  margin-bottom: 1.25rem;
+}
+
+.tx-modal-tab-btn {
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0.2rem;
+  font-size: 0.775rem;
+  font-weight: 700;
+  color: var(--color-gray-500);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.tx-modal-tab-btn.active {
+  background-color: #ffffff;
+  color: var(--color-gray-900);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.credit-payment-notice,
+.live-convert-alert {
+  background-color: var(--color-brand-50);
+  border: 1px solid var(--color-brand-200);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.775rem;
+  color: var(--color-brand-800);
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Rates Items */
+.rate-row-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.85rem;
+  background-color: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.5rem;
+}
+
+.rate-badge-code {
+  font-size: 0.8rem;
+  font-weight: 800;
+  background-color: var(--color-gray-200);
+  color: var(--color-gray-800);
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-xs);
+}
+
+.rate-input-field {
+  width: 140px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  text-align: right;
+  font-weight: 700;
 }
