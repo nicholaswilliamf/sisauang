@@ -638,20 +638,72 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 
   <!-- JavaScript Modules -->
-  <script src="js/config.js"></script>
-  <script src="js/currency.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/config.js?v=3.1"></script>
+  <script src="js/currency.js?v=3.1"></script>
+  <script src="js/storage.js?v=3.1"></script>
 
-  <!-- Registrasi Service Worker PWA (Hanya aktif di protokol HTTP/HTTPS) -->
+  <!-- Compatibility Adapter: Normalisasi Data Lama/Baru Sebelum app.js Dieksekusi -->
+  <script>
+    (function () {
+      try {
+        if (window.SisaUang && window.SisaUang.Storage) {
+          const origLoad = window.SisaUang.Storage.loadData.bind(window.SisaUang.Storage);
+          const normalizeCategories = function (data) {
+            if (!data || typeof data !== 'object') return data;
+            if (!Array.isArray(data.categories)) {
+              const oldCats = data.categories || {};
+              const exp = Array.isArray(oldCats.expense)
+                ? oldCats.expense.map(function (c) { return Object.assign({}, c, { type: 'expense' }); })
+                : [];
+              const inc = Array.isArray(oldCats.income)
+                ? oldCats.income.map(function (c) { return Object.assign({}, c, { type: 'income' }); })
+                : [];
+              data.categories = exp.concat(inc);
+            }
+            if (!Array.isArray(data.accounts)) data.accounts = [];
+            if (!Array.isArray(data.transactions)) data.transactions = [];
+            return data;
+          };
+
+          window.SisaUang.Storage.loadData = function () {
+            const loaded = origLoad();
+            const normalized = normalizeCategories(loaded);
+            try {
+              window.SisaUang.Storage.saveData(normalized);
+            } catch (e) {}
+            return normalized;
+          };
+
+          if (typeof window.SisaUang.Storage.importBackupFile === 'function') {
+            const origImport = window.SisaUang.Storage.importBackupFile.bind(window.SisaUang.Storage);
+            window.SisaUang.Storage.importBackupFile = async function (file) {
+              const res = await origImport(file);
+              if (res && res.success && res.data) {
+                res.data = normalizeCategories(res.data);
+                window.SisaUang.Storage.saveData(res.data);
+              }
+              return res;
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('SisaUang Compatibility Adapter warning:', err);
+      }
+    })();
+  </script>
+
+  <script src="js/app.js?v=3.1"></script>
+
+  <!-- Registrasi & Pembaruan Otomatis Service Worker PWA -->
   <script>
     if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(registration => {
-            console.log('Service Worker SisaUang berhasil didaftarkan dengan cakupan:', registration.scope);
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js?v=3.1')
+          .then(function (registration) {
+            registration.update();
+            console.log('Service Worker SisaUang aktif:', registration.scope);
           })
-          .catch(error => {
+          .catch(function (error) {
             console.warn('Pendaftaran Service Worker gagal:', error);
           });
       });
